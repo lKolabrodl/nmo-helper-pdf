@@ -14,7 +14,7 @@ import { DEFAULT_CONFIG } from "./predictor/config.js";
 import { clearPdfRuntimeCache, getPdfRuntime, normalizeAnswers } from "./predictor/runtime.js";
 import { bestDrugDoseSupport } from "./predictor/scorers/drug-dose.js";
 import { bestFibrosisStageSupport } from "./predictor/scorers/fibrosis-stage.js";
-import { bestRecommendationItemSupport } from "./predictor/scorers/recommendation-item.js";
+import { bestRecommendationItemSupport, explicitRecommendationTargetAdjustment } from "./predictor/scorers/recommendation-item.js";
 import {
   bestAnchorSupport,
   bestPhraseSupport,
@@ -2496,6 +2496,71 @@ function genericPopulationConditionAdjustment({ mode, pages, topQuestionPages, q
   return best ? { adjustment: -10.4, evidence: best } : { adjustment: 0, evidence: null };
 }
 
+function genericPopulationConditionAdjustmentForMode(context) {
+  const { mode, pages, topQuestionPages, question, answer, answers, focusTokens } = context;
+  if (mode !== "multi") return genericPopulationConditionAdjustment(context);
+  if (!genericPopulationAnswer(answer.text)) return { adjustment: 0, evidence: null };
+  if (genericPopulationAnswer(question)) return { adjustment: 0, evidence: null };
+  if (!containsNormalizedPhrase(normalizeForSearch(question), "\u0440\u0435\u043a\u043e\u043c\u0435\u043d\u0434")) return { adjustment: 0, evidence: null };
+  if (!hasSpecificPopulationAlternative(answers, answer)) return { adjustment: 0, evidence: null };
+  const answerPhrases = answerSearchPhrases(answer.text).slice(0, 8);
+  let best = null;
+
+  for (const page of pages) {
+    if (topQuestionPages?.size && !topQuestionPages.has(page.page)) continue;
+    for (const phrase of answerPhrases) {
+      const phraseNorm = normalizeForSearch(phrase);
+      if (!phraseNorm || phraseNorm.length < 5) continue;
+      const hits = findPhraseOccurrences(page.normalized, phrase, { textIsNormalized: true });
+      for (const hit of hits) {
+        const after = page.normalized.slice(hit + phraseNorm.length, hit + phraseNorm.length + 520);
+        const hasCondition =
+          containsNormalizedPhrase(after, "\u043f\u0440\u0438") ||
+          containsNormalizedPhrase(after, "\u0441 \u0446\u0435\u043b\u044c\u044e") ||
+          containsNormalizedPhrase(after, "\u0434\u043b\u044f") ||
+          containsNormalizedPhrase(after, "\u0441\u0442\u0435\u043f\u0435\u043d") ||
+          containsNormalizedPhrase(after, "\u0442\u044f\u0436\u0435\u043b");
+        if (!hasCondition) continue;
+        const focusCoverage = coverage(focusTokens, tokenizeNormalized(after));
+        if (focusCoverage < 0.12) continue;
+        best = betterEvidence(best, {
+          answerId: answer.id,
+          page: page.page,
+          text: evidenceSnippet(page.text, answer.text, question),
+          score: 3.0 + focusCoverage * 4.0,
+          kind: "generic_population_condition_penalty",
+        });
+      }
+    }
+  }
+
+  return best ? { adjustment: -5.2, evidence: best } : { adjustment: 0, evidence: null };
+}
+
+function populationStem(answerText) {
+  const tokens = uniqueTokens(answerText);
+  const stems = ["\u043f\u0430\u0446\u0438\u0435\u043d\u0442", "\u043f\u043e\u0441\u0442\u0440\u0430\u0434", "\u0431\u043e\u043b\u044c\u043d"].map((item) => normalizeForSearch(item));
+  return tokens.find((token) => stems.some((stem) => token.startsWith(stem.slice(0, Math.min(8, stem.length))))) ?? null;
+}
+
+function hasSpecificPopulationAlternative(answers, genericAnswer) {
+  const stem = populationStem(genericAnswer.text);
+  if (!stem) return false;
+  return (answers ?? []).some((candidate) => {
+    if (candidate.id === genericAnswer.id) return false;
+    const normalized = normalizeForSearch(candidate.text);
+    const candidateTokens = uniqueTokens(candidate.text);
+    if (!candidateTokens.some((token) => token.startsWith(stem.slice(0, Math.min(8, stem.length))))) return false;
+    return (
+      containsNormalizedPhrase(normalized, "\u0441\u0440\u0435\u0434\u043d") ||
+      containsNormalizedPhrase(normalized, "\u0442\u044f\u0436\u0435\u043b") ||
+      containsNormalizedPhrase(normalized, "\u0441\u0442\u0435\u043f\u0435\u043d") ||
+      containsNormalizedPhrase(normalized, "\u043f\u0440\u0438 \u043d\u0430\u043b\u0438\u0447") ||
+      containsNormalizedPhrase(normalized, "\u0441 \u043d\u0430\u043b\u0438\u0447")
+    );
+  });
+}
+
 function questionClassSubject(question) {
   const raw = normalizeText(question);
   const match = raw.match(/^(.+?)\s+относят\s+к\s+классу/u);
@@ -4600,6 +4665,26 @@ function countNumberSearchPhrases(answerText) {
   return [...phrases].filter(Boolean);
 }
 
+function countRelationAnswerOption(answerText) {
+  const normalized = normalizeForSearch(answerText);
+  const tokens = phraseTokens(answerText).filter((token) => token.length > 0);
+  const numbers = extractNumbers(answerText);
+  if (!numbers.length || tokens.length > 4 || normalized.length > 36) return false;
+  const numberLike = new Set(numbers.flatMap(expandNumberToken).map((item) => String(item).replace("%", "")));
+  for (const [number, words] of COUNT_NUMBER_WORDS.entries()) {
+    if (numberLike.has(number)) {
+      for (const word of words) numberLike.add(word);
+    }
+  }
+  const nonNumericTokens = tokens.filter((token) => {
+    const clean = token.replace(/[%.,+-]/g, "");
+    if (!clean) return false;
+    if (/^\d+$/u.test(clean)) return false;
+    return !numberLike.has(clean);
+  });
+  return nonNumericTokens.length <= 1;
+}
+
 function countCueHit(local) {
   return COUNT_LOCAL_CUES.some((cue) => local.includes(cue));
 }
@@ -4635,6 +4720,7 @@ function countTargetNear(normalizedPage, hit, phraseLength, question) {
 function bestCountRelationSupport({ mode, pages, topQuestionPages, question, answer, answerTokens }) {
   if (mode !== "single" || !countQuestion(question)) return null;
   if (!extractNumbers(answer.text).length) return null;
+  if (!countRelationAnswerOption(answer.text)) return null;
   const phrases = countNumberSearchPhrases(answer.text);
   if (!phrases.length) return null;
   const focusTokens = countFocusTokens(question);
@@ -4965,11 +5051,12 @@ function bestRomanStageSupport({ mode, pages, question, answer, answerTokens }) 
 
 function answerOrdinalLabel(answerText) {
   const normalized = normalizeForSearch(answerText);
+  const tokens = normalized.split(/\s+/u).filter(Boolean);
   const kinds = [
     { kind: "stage", cue: normalizeForSearch("\u0441\u0442\u0430\u0434\u0438") },
     { kind: "degree", cue: normalizeForSearch("\u0441\u0442\u0435\u043f\u0435\u043d") },
   ];
-  const kind = kinds.find((item) => normalized.includes(item.cue));
+  const kind = kinds.find((item) => tokens.some((token) => token.startsWith(item.cue)));
   if (!kind) return null;
 
   const values = new Set<number>();
@@ -4987,6 +5074,11 @@ function ordinalKindCue(kind) {
   return normalizeForSearch("\u043a\u043b\u0430\u0441\u0441");
 }
 
+function hasOrdinalKindCue(normalized, kind) {
+  const cue = ordinalKindCue(kind);
+  return new RegExp(`(?:^|\\s)${escapeRegExp(cue)}\\S*(?:\\s|$)`, "iu").test(normalized);
+}
+
 function nextAnswerOrdinalIndex(normalized, start, label) {
   const cue = ordinalKindCue(label.kind);
   let best = -1;
@@ -4999,7 +5091,7 @@ function nextAnswerOrdinalIndex(normalized, start, label) {
       const index = start + match.index;
       const before = normalized.slice(Math.max(0, index - 180), index);
       const after = normalized.slice(index, Math.min(normalized.length, index + 90));
-      if (!before.includes(cue) && !after.includes(cue)) continue;
+      if (!hasOrdinalKindCue(before, label.kind) && !hasOrdinalKindCue(after, label.kind)) continue;
       if (best < 0 || index < best) best = index;
     }
   }
@@ -5011,7 +5103,7 @@ function answerOrdinalRowWindows(source, label) {
   const cue = ordinalKindCue(label.kind);
   const windows = [];
   for (const variant of romanStageVariants(String(label.number))) {
-    if (normalized.includes(cue)) {
+    if (hasOrdinalKindCue(normalized, label.kind)) {
       const directPatterns = [
         new RegExp(`(?:^|\\s)${escapeRegExp(variant)}(?:\\s*-?\\s*\\S{0,3})?\\s+${escapeRegExp(cue)}`, "giu"),
         new RegExp(`${escapeRegExp(cue)}\\s+(?:\\S+\\s+){0,2}${escapeRegExp(variant)}(?:\\s|$)`, "giu"),
@@ -5036,7 +5128,7 @@ function answerOrdinalRowWindows(source, label) {
         }
         const before = normalized.slice(Math.max(0, index - 220), index);
         const after = normalized.slice(index, Math.min(normalized.length, index + 100));
-        if (!before.includes(cue) && !after.includes(cue)) {
+        if (!hasOrdinalKindCue(before, label.kind) && !hasOrdinalKindCue(after, label.kind)) {
           start = index + Math.max(1, variant.length);
           continue;
         }
@@ -5057,8 +5149,7 @@ function answerOrdinalRowWindows(source, label) {
 }
 
 function ordinalRangeIncludesValue(normalized, label) {
-  const cue = ordinalKindCue(label.kind);
-  if (!normalized.includes(cue)) return false;
+  if (!hasOrdinalKindCue(normalized, label.kind)) return false;
   const number = label.number;
   const digitPatterns = [
     /(?:^|\s)(\d{1,2})\s*-\s*(\d{1,2})(?:\s|$)/giu,
@@ -5164,6 +5255,64 @@ function bestAnswerOrdinalRowSupport({ mode, pages, topQuestionPages, answer, an
   return best;
 }
 
+const CONTRAST_CUE_GROUPS = [
+  {
+    answer: ["\u0432\u0435\u0440\u0445\u043d"],
+    opposite: ["\u043d\u0438\u0436\u043d", "\u0431\u0430\u0437\u0430\u043b"],
+  },
+  {
+    answer: ["\u043d\u0438\u0436\u043d", "\u0431\u0430\u0437\u0430\u043b"],
+    opposite: ["\u0432\u0435\u0440\u0445\u043d"],
+  },
+  {
+    answer: ["\u043f\u043e\u0432\u044b\u0448", "\u0443\u0432\u0435\u043b\u0438\u0447"],
+    opposite: ["\u043f\u043e\u043d\u0438\u0436", "\u0441\u043d\u0438\u0436", "\u0443\u043c\u0435\u043d\u044c\u0448"],
+  },
+  {
+    answer: ["\u043f\u043e\u043d\u0438\u0436", "\u0441\u043d\u0438\u0436", "\u0443\u043c\u0435\u043d\u044c\u0448"],
+    opposite: ["\u043f\u043e\u0432\u044b\u0448", "\u0443\u0432\u0435\u043b\u0438\u0447"],
+  },
+  {
+    answer: ["\u0434\u0438\u0441\u0442\u0430\u043b\u044c\u043d\u043e\u043f\u0440\u043e\u043a\u0441\u0438\u043c"],
+    opposite: ["\u043f\u0440\u043e\u043a\u0441\u0438\u043c\u0430\u043b\u044c\u043d\u043e\u0434\u0438\u0441\u0442"],
+  },
+  {
+    answer: ["\u043f\u0440\u043e\u043a\u0441\u0438\u043c\u0430\u043b\u044c\u043d\u043e\u0434\u0438\u0441\u0442"],
+    opposite: ["\u0434\u0438\u0441\u0442\u0430\u043b\u044c\u043d\u043e\u043f\u0440\u043e\u043a\u0441\u0438\u043c"],
+  },
+].map((group) => ({
+  answer: group.answer.map((item) => normalizeForSearch(item)),
+  opposite: group.opposite.map((item) => normalizeForSearch(item)),
+}));
+
+function contrastCueMismatchAdjustment({ mode, answer }, evidence) {
+  if (mode !== "multi" || !evidence?.length) return { adjustment: 0, evidence: null };
+  const answerNorm = normalizeForSearch(answer.text);
+  const group = CONTRAST_CUE_GROUPS.find((item) => item.answer.some((cue) => answerNorm.includes(cue)));
+  if (!group) return { adjustment: 0, evidence: null };
+
+  for (const item of evidence.slice(0, 4)) {
+    if ((item.score ?? 0) < 5.5 || !item.text) continue;
+    const sourceNorm = normalizeForSearch(item.text);
+    const hasAnswerCue = group.answer.some((cue) => sourceNorm.includes(cue));
+    const hasOppositeCue = group.opposite.some((cue) => sourceNorm.includes(cue));
+    if (!hasAnswerCue && hasOppositeCue) {
+      return {
+        adjustment: -5.2,
+        evidence: {
+          answerId: answer.id,
+          page: item.page,
+          text: item.text,
+          score: 5.2,
+          kind: "contrast_cue_mismatch",
+        },
+      };
+    }
+  }
+
+  return { adjustment: 0, evidence: null };
+}
+
 function scoreAnswer(context) {
   const anchor = bestAnchorSupport(context);
   const section = bestSectionSupport(context);
@@ -5177,7 +5326,7 @@ function scoreAnswer(context) {
   const temporal = temporalCueAdjustment(context);
   const conditionPair = conditionPairAdjustment(context);
   const riskCondition = riskConditionAdjustment(context);
-  const genericPopulation = genericPopulationConditionAdjustment(context);
+  const genericPopulation = genericPopulationConditionAdjustmentForMode(context);
   const classSubject = bestClassSubjectSupport(context);
   const frequency = bestFrequencyRecommendationSupport(context);
   const negativeLocal = { adjustment: 0, evidence: null };
@@ -5194,6 +5343,7 @@ function scoreAnswer(context) {
   const impossibilityOnly = impossibilityOnlyAdjustment(context);
   const activeTherapyIndication = activeTherapyIndicationAdjustment(context);
   const recommendationItem = bestRecommendationItemSupport(context);
+  const explicitRecommendationTarget = explicitRecommendationTargetAdjustment(context);
   const conditionedNumber = bestConditionedNumberSupport(context);
   const numericCondition = bestNumericConditionSupport(context);
   const countRelation = context.config?.countRelationBoost ? bestCountRelationSupport(context) : null;
@@ -5254,6 +5404,8 @@ function scoreAnswer(context) {
     impossibilityOnly.adjustment +
     activeTherapyIndication.adjustment +
     (recommendationItem?.score ?? 0) * 1.1 +
+    (explicitRecommendationTarget.support?.score ?? 0) * 1.05 +
+    explicitRecommendationTarget.adjustment +
     (conditionedNumber?.score ?? 0) * 1.1 +
     (numericCondition?.score ?? 0) * 1.05 +
     (countRelation?.score ?? 0) * 1.1 +
@@ -5285,7 +5437,7 @@ function scoreAnswer(context) {
     raw *= 0.72;
   }
 
-  const evidence = [
+  let evidence = [
     anchor,
     section,
     rowLabel,
@@ -5318,6 +5470,8 @@ function scoreAnswer(context) {
     impossibilityOnly.evidence,
     activeTherapyIndication.evidence,
     recommendationItem,
+    explicitRecommendationTarget.support,
+    explicitRecommendationTarget.evidence,
     conditionedNumber,
     numericCondition,
     countRelation,
@@ -5339,9 +5493,11 @@ function scoreAnswer(context) {
     classificationCode,
     exactShortLabelRow,
     shortLabelRow,
-  ]
-    .filter(Boolean)
-    .sort((a, b) => b.score - a.score);
+  ].filter(Boolean);
+  const contrastCue = contrastCueMismatchAdjustment(context, evidence.sort((a, b) => b.score - a.score));
+  raw += contrastCue.adjustment;
+  if (contrastCue.evidence) evidence.push(contrastCue.evidence);
+  evidence = evidence.sort((a, b) => b.score - a.score);
   return { raw, evidence };
 }
 
@@ -5398,6 +5554,7 @@ export async function predict(input, options: any = {}) {
       mode,
       question,
       answer,
+      answers,
       questionTokens,
       topQuestionPages,
       focusTokens,
@@ -5444,6 +5601,7 @@ export async function predict(input, options: any = {}) {
     .flatMap((item) => item.evidence.map((evidenceItem) => ({ ...evidenceItem, answerId: item.answer.id, score: round4(evidenceItem.score) })))
     .sort((a, b) => b.score - a.score)
     .slice(0, config.evidenceLimit);
+  const diagnostics = options.diagnostics ? { answerEvidence: buildAnswerEvidenceDiagnostics(calibrated) } : undefined;
 
   return {
     selected,
@@ -5452,6 +5610,7 @@ export async function predict(input, options: any = {}) {
     scores,
     rawScores,
     evidence,
+    ...(diagnostics ? { diagnostics } : {}),
     meta: {
       pageCount: runtime.pdfText.pageCount,
       chunks: runtime.chunks.length,
@@ -5459,6 +5618,42 @@ export async function predict(input, options: any = {}) {
       intent,
     },
   };
+}
+
+function buildAnswerEvidenceDiagnostics(calibrated) {
+  return Object.fromEntries(
+    calibrated.map((item) => {
+      const kindCounts = {};
+      const kindBestScores = {};
+      const pages = new Set();
+      let bestEvidenceScore = 0;
+
+      for (const evidenceItem of item.evidence ?? []) {
+        const kind = String(evidenceItem.kind ?? "unknown");
+        const score = Number(evidenceItem.score ?? 0);
+        kindCounts[kind] = (kindCounts[kind] ?? 0) + 1;
+        kindBestScores[kind] = round4(Math.max(kindBestScores[kind] ?? 0, score));
+        bestEvidenceScore = Math.max(bestEvidenceScore, score);
+        if (Number.isFinite(evidenceItem.page)) pages.add(evidenceItem.page);
+      }
+
+      return [
+        item.answer.id,
+        {
+          evidenceCount: item.evidence?.length ?? 0,
+          uniqueEvidencePages: pages.size,
+          bestEvidenceScore: round4(bestEvidenceScore),
+          kindCounts,
+          kindBestScores,
+          refs: (item.evidence ?? []).map((evidenceItem) => ({
+            page: Number.isFinite(evidenceItem.page) ? evidenceItem.page : 0,
+            kind: String(evidenceItem.kind ?? "unknown"),
+            score: round4(Number(evidenceItem.score ?? 0)),
+          })),
+        },
+      ];
+    }),
+  );
 }
 
 /**

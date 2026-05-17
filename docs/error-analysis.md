@@ -2,42 +2,41 @@
 
 ## Current Error Counts
 
-Latest run after iteration 49 on the current 42-PDF corpus. Metrics below exclude `17` unkeyed `22-eozif` cases with `expected: []`.
+Latest run after iteration 55 on the current 42-PDF corpus. Metrics below exclude `17` unkeyed `22-eozif` cases with `expected: []`.
 
 Train (`1597` keyed cases):
 
-- correct: `1104`
-- errors: `493`
-- `confused_with_distractor`: `315`
-- `multi_cardinality`: `178`
+- correct: `1106`
+- errors: `491`
+- `confused_with_distractor`: `316`
+- `multi_cardinality`: `175`
 
 Dev (`473` cases):
 
-- correct: `355`
-- errors: `118`
-- `confused_with_distractor`: `75`
-- `multi_cardinality`: `43`
+- correct: `363`
+- errors: `110`
+- `confused_with_distractor`: `73`
+- `multi_cardinality`: `37`
 
 Holdout (`550` cases):
 
-- correct: `449`
-- errors: `101`
-- `confused_with_distractor`: `71`
-- `multi_cardinality`: `30`
+- correct: `456`
+- errors: `94`
+- `confused_with_distractor`: `67`
+- `multi_cardinality`: `27`
 
 All keyed splits combined:
 
-- correct: `1908/2620 = 0.7282`
-- errors: `712`
-- `confused_with_distractor`: `461`
-- `multi_cardinality`: `251`
+- correct: `1925/2620 = 0.7347`
+- errors: `695`
+- `confused_with_distractor`: `456`
+- `multi_cardinality`: `239`
 
-Worst PDFs by remaining error count across all keyed splits after iteration 49:
+Worst PDFs by remaining error count across all keyed splits after iteration 55:
 
 - `35-cron`: `31`
-- `37-bazal`: `28`
 - `24-kalit`: `28`
-- `15-toxic`: `27`
+- `37-bazal`: `28`
 - `30-heart`: `27`
 - `36-anrid`: `27`
 - `29-tpank`: `26`
@@ -48,14 +47,14 @@ Worst PDFs by remaining error count across all keyed splits after iteration 49:
 
 Worst holdout PDFs:
 
-- `14-sarkoidoz`: `15`
 - `33-aorta`: `15`
-- `19-gepatitc`: `13`
 - `18-gepatitabc`: `13`
-- `06-co-toksic`: `12`
-- `11-mening`: `11`
+- `19-gepatitc`: `13`
+- `14-sarkoidoz`: `12`
+- `06-co-toksic`: `11`
 - `17-gepatit`: `11`
 - `23-nimana`: `11`
+- `11-mening`: `10`
 
 The older snapshot below is kept for comparison.
 
@@ -159,32 +158,83 @@ During iteration 44, the multi all-options hypothesis was tested. Only `3/809` m
 
 ## Current Top Derived Classes
 
-- all keyed splits: `confused_with_distractor = 461`, `multi_cardinality = 251`
-- train: `confused_with_distractor = 315`, `multi_cardinality = 178`
-- dev: `confused_with_distractor = 75`, `multi_cardinality = 43`
-- holdout: `confused_with_distractor = 71`, `multi_cardinality = 30`
+- all keyed splits: `confused_with_distractor = 456`, `multi_cardinality = 239`
+- train: `confused_with_distractor = 316`, `multi_cardinality = 175`
+- dev: `confused_with_distractor = 73`, `multi_cardinality = 37`
+- holdout: `confused_with_distractor = 67`, `multi_cardinality = 27`
 
-Holdout exact accuracy improved in iteration 47 and still passes:
+Holdout exact accuracy improved through iteration 55 and still passes:
 
-- `confused_with_distractor`: `71`
-- `multi_cardinality`: `30`
+- `confused_with_distractor`: `67`
+- `multi_cardinality`: `27`
 
 Worst holdout PDFs by remaining error count:
 
-- `14-sarkoidoz`: `15` errors
 - `33-aorta`: `15` errors
 - `18-gepatitabc`: `13` errors
 - `19-gepatitc`: `13` errors
-- `06-co-toksic`: `12` errors
-- `11-mening`: `11` errors
+- `14-sarkoidoz`: `12` errors
+- `06-co-toksic`: `11` errors
 - `17-gepatit`: `11` errors
 - `23-nimana`: `11` errors
+- `11-mening`: `10` errors
 
 ## Remaining Risk After Passing 0.80
 
-Iteration 49 passes the holdout target with exact accuracy `0.8164` (`449/550`). The new user-requested overall target is not reached: answer-keyed overall accuracy is `1908/2620 = 0.7282`, requiring `188` more exact answers to reach `0.80`.
+Iteration 55 passes the holdout target with exact accuracy `0.8291` (`456/550`). The new user-requested overall target is not reached: answer-keyed overall accuracy is `1925/2620 = 0.7347`, requiring `171` more exact answers to reach `0.80`.
 
-The main residual risk is still layout semantics plus exact multi-answer set selection. Isolated visual-row, exact short-label row, step-window, condition-number, definition-window, answer-stage/degree row, count-cloze, coordinate table-column, coordinate table-row, gene-symbol sentence binding, narrow clinical-feature sentence binding, MKB class exclusion binding, frozen feature/cardinality pruning, all-options/crowded-tail guards, MKB/code-row binding, and near-tie specificity rules recover some cases, but many remaining errors come from flattened tables, adjacent recommendation bullets, and weak cardinality calibration. The remaining 188-answer overall shortfall requires richer structural evidence, not another scalar threshold tweak.
+The main residual risk is still layout semantics plus exact multi-answer set selection. Isolated visual-row, exact short-label row, step-window, condition-number, definition-window, answer-stage/degree row, count-cloze, coordinate table-column, coordinate table-row, gene-symbol sentence binding, narrow clinical-feature sentence binding, MKB class exclusion binding, explicit recommendation target binding, contrast-cue mismatch pruning, frozen feature/cardinality pruning, all-options/crowded-tail guards, MKB/code-row binding, and near-tie specificity rules recover some cases, but many remaining errors come from flattened tables, adjacent recommendation bullets, and weak cardinality calibration. The remaining 171-answer overall shortfall requires richer structural evidence, not another scalar threshold tweak.
+
+Iteration 50 diagnostic export:
+
+- Added offline answer-row feature export without changing predictor selection.
+- Dev export has `1956` answer rows: `701` positives, `707` baseline-selected rows, `593` selected positives.
+- Baseline dev remains `355/473 = 0.7505`; single remains `0.8328`, multi remains `0.5625`.
+- Oracle top-k with known answer count reaches `0.8013` overall and `0.7292` on multi, so a cardinality/rank calibrator has room to help but cannot replace better structural evidence.
+- Dev selected false-positive rows: `114`; dev missed positive rows: `108`.
+- Abstract feature comparison on dev:
+  - positives average raw rank `1.72`; missed positives average raw rank `3.16`;
+  - selected false positives have average gap-to-top `0.79`, while missed positives average `6.85`;
+  - positives have structural evidence more often than negatives (`0.17` vs `0.074`), but many positives are still broad/noisy-only evidence (`0.83`), which explains why simple pruning is risky.
+
+Conclusion: a small calibrator should focus on near-ties, evidence-kind reliability, and multi cardinality. It must not use question/answer text, PDF group, case id, answer id, or holdout labels.
+
+Iteration 51 calibrator experiment:
+
+- Trained a small logistic model on train answer-row features only.
+- Replacing the selector with model probabilities regressed dev from `0.7505` to `0.7336` and holdout report-only from `0.8164` to `0.7964`.
+- A conservative baseline post-corrector improved dev by one exact case (`355 -> 356`) and multi exact from `0.5625` to `0.5694`, but train dropped by one and holdout report-only dropped by two (`449 -> 447`).
+- The gain is therefore not stable. No model weights were integrated into runtime.
+
+Conclusion: the current abstract rank/gap/evidence-kind features are useful for analysis but too weak for a frozen learned selector. The next useful feature work should expose more structural table/list binding signals rather than relying on a generic row classifier.
+
+Iteration 52 gated count-relation outcome:
+
+- Hypothesis: count-style single questions can be improved by binding short numeric answer options to local text that also contains the question focus and count/relation cues.
+- Kept narrowly: `count_relation_segment` is enabled only for single questions and only when the answer option itself looks like a short numeric answer. This prevents false positives where a long biomedical answer merely contains an incidental token like `CD8+`.
+- Outcome: train improves from `1104/1597` to `1105/1597`, dev stays `355/473`, and holdout improves from `449/550` to `452/550`.
+- Single-answer overall improves by four exact answers; multi is unchanged.
+
+Rejected in the same iteration: broader single near-tie specificity tuning improved dev by one case but broke train and holdout, so the selector thresholds were not changed.
+
+Iteration 53 ordinal-boundary outcome:
+
+- Hypothesis: some answer options encode a degree/stage label, but substring matching can confuse `степень` with unrelated words such as `постепенное`.
+- Kept: ordinal cue detection now checks token boundaries and stems instead of raw substring inclusion.
+- Outcome: dev improves by one exact case (`355 -> 356`) without changing train or holdout.
+
+Iteration 54 explicit recommendation target outcome:
+
+- Hypothesis: multi recommendation questions often ask about a specific target after `назначение`, `проведение`, `проводить`, or `выполнение`; answers found only in a neighboring recommendation block should not be treated as equally supported.
+- Kept: recommendation blocks are collected from explicit `рекомендовано...` lines, target/context coverage is required, numeric answer coverage is checked, and follow-up frequency answers are exempted from mismatch penalties.
+- Kept: generic population answers like `всем пациентам` are penalized only when another answer option names the same population more specifically, for example by severity or condition.
+- Outcome: dev improves from `356/473` to `362/473`; holdout improves from `452/550` to `454/550`; gains are concentrated in multi exact sets.
+
+Iteration 55 contrast-cue outcome:
+
+- Hypothesis: some wrong multi variants are near the right evidence but encode the opposite cue: upper vs lower/basal, increased vs decreased, or distal-proximal vs proximal-distal order.
+- Kept narrowly: only short, explicit contrast cue groups are used, and only when the candidate's strongest evidence text contains the opposite cue but not the answer's own cue.
+- Outcome: dev improves to `363/473`, holdout improves to `456/550`, and multi exact overall reaches `462/809 = 0.5711`.
 
 Iteration 45 hypothesis and outcome:
 

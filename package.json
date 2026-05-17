@@ -43,6 +43,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "predict": "tsx src/cli.ts",
+    "features:export": "tsx scripts/export-features.ts",
+    "calibrator:experiment": "tsx scripts/calibrator-experiment.ts",
     "eval": "tsx scripts/eval.ts --split dev",
     "eval:holdout": "tsx scripts/eval.ts --split holdout"
   },

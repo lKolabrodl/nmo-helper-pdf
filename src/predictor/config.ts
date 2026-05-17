@@ -20,7 +20,7 @@ export const DEFAULT_CONFIG = {
   singleTieMinRawRatio: 0.94,
   singleTieSpecificityGap: 0.5,
   sharedMultiSegmentBoost: true,
-  countRelationBoost: false,
+  countRelationBoost: true,
   topQuestionChunks: 28,
   evidenceLimit: 8,
 };

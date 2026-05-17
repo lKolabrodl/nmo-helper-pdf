@@ -83,8 +83,11 @@ The predictor returns machine-readable JSON:
    - `answer_ordinal_row` for answer options that are themselves stage/degree labels (`1/2/3`, `I/II/III`) and must be bound back to the matching classification row;
    - `label_definition_segment` for questions like `считается <label> при ...`;
    - `recommendation_polarity_match` for narrow negative-recommendation questions;
+   - `explicit_recommendation_target_segment` / `explicit_recommendation_target_mismatch` for multi questions about `назначение`, `проведение`, `проводить`, or `выполнение` a specific target; the answer must be supported by the recommendation block for that target, and confident hits in neighboring recommendation blocks get a mild penalty;
    - `frequency_recommendation_line` with stricter unit matching for `дни` vs `сутки`;
    - `conditioned_number_segment` and `numeric_condition_*` for tightly scoped condition/value rows such as `2-я неделя -> 0,05`, `20-30 кг -> 60 мг`, and phase abbreviations like `ХФ/ФА/БК -> 400/600 мг`;
+   - `count_relation_segment` for single-answer count questions whose variants are short numeric answers, binding the number to local count/relation cues and question focus while ignoring long biomedical answers that only contain incidental numeric tokens;
+   - `contrast_cue_mismatch` for multi-answer variants whose strongest evidence contains the opposite cue, such as upper vs lower/basal, increased vs decreased, or distal-proximal vs proximal-distal order;
    - `roman_stage_segment` for table-style roman stage rows under a `Стадия` heading, including questions written as `II стадия`;
    - `temporal_cue_match` / `temporal_cue_mismatch` for single-answer day/night cues;
    - `bm25_question_answer`;
@@ -98,7 +101,8 @@ The predictor returns machine-readable JSON:
    - conservative multi-answer cardinality adjustments;
    - an all-options guard for 3- and 4-option multi questions, because selecting every option is almost always an over-selection in this corpus;
    - a crowded-tail guard for 4-option multi questions where 3 answers were selected but the third and fourth raw scores are nearly tied; this trims the ambiguous tail to top-2 rather than treating a weak 3-of-4 set as reliable;
-   - generic structural-cluster pruning for recommendation-like multi questions, gated away from broad list/source/dose-regimen patterns.
+   - generic structural-cluster pruning for recommendation-like multi questions, gated away from broad list/source/dose-regimen patterns;
+   - generic-population adjustment for multi recommendations, applied only when a broad population answer has a more specific same-population alternative among the options.
 9. Calibrate scores with relative spread and a softmax-like transform.
 10. Select:
    - `single`: highest raw score, except for a conservative near-tie specificity tie-break when top-1/top-2 raw scores are almost equal;
@@ -120,6 +124,8 @@ The predictor returns machine-readable JSON:
 - `src/predictor/types.ts`: answer/evidence score contracts.
 - `src/predictor/selection.ts`: score calibration and single/multi selection.
 - `src/pdf.ts`, `src/chunk.ts`, `src/bm25.ts`, `src/normalize.ts`: extraction, chunking, retrieval, and normalization utilities.
+- `scripts/export-features.ts`: offline feature exporter for future non-LLM calibration experiments. It calls predictor with diagnostics enabled, but writes only abstract numeric/categorical evidence features, never question text, answer text, or PDF text.
+- `scripts/calibrator-experiment.ts`: offline logistic-calibrator experiment over exported features. It is not used by runtime predictor and currently does not produce frozen weights.
 
 Current selection thresholds:
 
@@ -133,6 +139,18 @@ Current selection thresholds:
 - crowded-tail guard: when a 4-option multi question selects 3 answers, reduce to top-2 only if the third selected answer is separated from the unselected fourth by less than `0.3` raw score and the top answer is not tied with the second
 - shared segment boost: enabled, with a raw prior ratio floor before any candidate can be lifted.
 - frozen feature ranker, multi-cardinality model, pairwise contrast, and structural-cluster adjustments are enabled; all use fixed local coefficients and evidence kinds only.
+
+## Diagnostic Feature Export
+
+`predict()` supports an optional `diagnostics: true` development flag. This flag does not change scoring or selection. It only returns per-answer evidence summaries:
+
+- evidence count;
+- unique evidence page count;
+- best evidence score;
+- evidence-kind counts;
+- best score by evidence kind.
+
+The public default output remains unchanged. The exporter uses these summaries to create offline rows for safe calibrator research. The generated `features` object intentionally excludes raw texts, PDF identifiers, case identifiers, and answer identifiers; those values are metadata only.
 
 ## Non-LLM Guarantee
 

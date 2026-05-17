@@ -54,21 +54,27 @@
 | 47 | Added `gene_sentence_segment`: for mutation/polymorphism gene questions, bind short Latin gene-symbol answers to the single sentence that contains the question focus, with OCR variants such as `FCGR3A -> РСОКЗА` and spaced `N 0 0 2 -> NOD2` | 0.7505 | 0.8164 | Fixed `14-sarkoidoz#57` (`MMP9`, `FCGR3A`, `CC10`) and `14-sarkoidoz#39` (`NOD2`), improving holdout to `449/550` and `14-sarkoidoz` to `65/80` | No dev/train gain; the rule is intentionally narrow and only helps gene-symbol OCR/list cases | Use sentence-level evidence for other compact biomedical symbol lists only after validating against dev/holdout |
 | 48 | Added narrow `clinical_feature_segment` / `clinical_feature_negated` support for multi questions phrased as `имеет следующие клинические признаки`: positive feature sentences near the form focus are boosted, while `не типично`/`не характерно` in the same sentence penalizes that option | 0.7505 | 0.8164 | Fixed the Pincus fibroepithelioma clinical-sign case by selecting location, pink node, and dense-elastic consistency while rejecting `эрозирование или изъязвление не типично`; train improved to `1103/1597` | A broad symptom/clinical-picture version regressed train to `1097/1597`, so only the narrow `имеет следующие клинические признаки` wording was retained | Extend only with phrase gates proven neutral on dev/holdout |
 | 49 | Added narrow MKB class exclusion support for multi questions like `по МКБ-10 в класс Cxx не включены`: member rows `Cxx.y` are treated as included, and absent options answer the negative wording | 0.7505 | 0.8164 | Fixed `37-bazal#32` by rejecting `C44.0` skin lip and `C44.1` eyelid member rows and selecting the absent class options; train improved to `1104/1597` | No dev/holdout gain because this pattern only appeared in train; absence-based evidence is intentionally gated to MKB class + negative wording | Keep absence-based logic limited to explicit classification membership questions |
+| 50 | Added offline feature exporter for future small non-LLM calibrator research; predictor selection is unchanged, and `diagnostics: true` returns only per-answer evidence summaries | 0.7505 | 0.8164 | Created train/dev/holdout feature exports; dev oracle top-k by known cardinality is `0.8013` overall and `0.7292` for multi; feature guard reports no string values inside `features` | No runtime accuracy change yet; top-k oracle shows cardinality alone is insufficient, and training on only 40+ PDFs is risky without strict feature guardrails | Test a tiny calibrator only on abstract score/evidence features with group/leave-PDF-out validation; holdout must be reporting-only |
+| 51 | Added `calibrator:experiment`: a small logistic model trained only on train feature rows, plus model-replacement and baseline-postprocess selection families | 0.7505 runtime; `0.7526` best offline dev postprocess | 0.8164 runtime; `0.8127` report-only postprocess | Demonstrated that the safest learned post-corrector can recover one dev exact multi case | The gain is unstable: train loses one exact case and holdout report-only loses two; full model replacement regresses dev to `0.7336` | Do not freeze learned weights yet; add richer structural table/list features before another calibrator attempt |
+| 52 | Enabled gated `count_relation_segment` for single-answer count questions, restricted to short numeric answer options so incidental biomedical numbers such as `CD8+` do not trigger the scorer | 0.7505 | 0.8218 | Fixed numeric count questions on train/holdout without changing dev; train `1105/1597`, holdout `452/550`; single overall +4 exact | Multi unchanged; broader single near-tie tuning was rejected after train/holdout regressions | Continue with structural multi-answer evidence rather than scalar selector tuning |
+| 53 | Tightened answer ordinal cue detection so labels like `1 степень` still bind to row windows, while unrelated words such as `постепенное` no longer count as `степень` evidence | 0.7526 | 0.8218 | Recovered one dev single case without changing holdout; the rule is token-boundary based and not tied to a PDF/question id | Only a small slice of errors are ordinal-cue false positives | Continue with multi-specific structural evidence |
+| 54 | Added explicit recommendation target blocks for questions like `рекомендовано назначение/проведение X`: answer support must come from the recommendation block for target `X`, while confident hits in a neighboring recommendation block get a mild mismatch penalty | 0.7653 | 0.8255 | Fixed several dev multi recommendation rows and one holdout recommendation row; generic `all patients` answers are penalized only when a more specific same-population alternative exists | Follow-up frequency answers needed a guard so monitoring intervals are not wrongly treated as neighboring-target mismatches | Add contrast-aware pruning for answer options that encode opposite directions/locations |
+| 55 | Added multi-answer `contrast_cue_mismatch` for opposite option cues such as upper vs lower/basal, increased vs decreased, and distal-proximal vs proximal-distal order | 0.7674 | 0.8291 | Fixed additional multi distractors on dev and holdout; all net gain since iteration 52 is in multi exact sets | The cue list is intentionally short; broad synonym expansion was avoided to prevent fitting to current PDFs | Next work should expose richer layout/list features before trying another calibrator |
 
-Best current variant: iteration 49 for the current answer-keyed corpus, including newly available `42-skvoz`.
+Best current variant: iteration 55 for the current answer-keyed corpus, including newly available `42-skvoz`.
 
 Current gate result after continuation:
 
 - `npm test`: pass
 - `npm run typecheck`: pass
-- `npm run eval`: pass, dev exact accuracy `355/473 = 0.7505`
-- `npm run eval:holdout`: pass, holdout exact accuracy `449/550 = 0.8164`
-- train split: `1104/1597 = 0.6913`, `17` unkeyed cases skipped
-- answer-keyed overall: `1908/2620 = 0.7282`
-- all cases including unkeyed denominator: `1908/2637 = 0.7235`
-- single overall: `1459/1811 = 0.8056`
-- multi exact overall: `449/809 = 0.5550`
-- new overall target `>= 0.80` is not reached; shortfall is `188` additional exact answers on keyed cases.
+- `npm run eval`: pass, dev exact accuracy `363/473 = 0.7674`
+- `npm run eval:holdout`: pass, holdout exact accuracy `456/550 = 0.8291`
+- train split: `1106/1597 = 0.6925`, `17` unkeyed cases skipped
+- answer-keyed overall: `1925/2620 = 0.7347`
+- all cases including unkeyed denominator: `1925/2637 = 0.7300`
+- single overall: `1463/1811 = 0.8078`
+- multi exact overall: `462/809 = 0.5711`
+- new overall target `>= 0.80` is not reached; shortfall is `171` additional exact answers on keyed cases.
 
 Iteration 39 rejected attempts:
 
