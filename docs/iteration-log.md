@@ -63,6 +63,7 @@
 | 56 | Fixed answer-option ordinal row matching so Roman `I` no longer matches the start of `II`/`III` rows; added a final duplicate-text guard for multi selections | 0.7717 | 0.8291 | Fixed two dev ordinal/stage cases without changing train or holdout; duplicate selected variants are collapsed by normalized answer text | Broader short-Latin fuzzy tightening, therapy-structure matching, row-start ordinal boosting, definition-length boosting, and re-enabling `condition_number_segment` were rejected after neutral or regressive evals | Continue with structural table/list reconstruction; keep parser fixes, reject neutral scorers |
 | 57 | Added explicit-coordinate `coordinate_table_group` support for multi table rows (`left label -> right values`) and a small route synonym (`per os` -> peroral) | 0.7738 | 0.8291 | Fixed the `ДДАХ/ДДБА` fixed-combination table row and two dev route-of-administration table cases; dev multi exact rose to `0.6319` | The table-group scorer is gated to explicit `Таблица` captions, requires lexical answer support, and requires full compound row-label focus for `/` or `+` labels; broader scale/pseudo-column contexts were rejected after a holdout false positive | Continue table work, but keep group reconstruction conservative and evidence-bound |
 | 58 | Kept a tiny RU route-abbreviation dictionary inside table-group evidence (`в/в`, `в/м`, `п/к`, `внутрь`, plus full route stems) | 0.7738 | 0.8291 | Strengthens tabular route matching for future PDFs while keeping the current dev/holdout exact scores unchanged | A broader English route dictionary (`IV/IM/SC/SQ/PO/oral`) was rejected as unnecessary surface area after no exact gain on train/dev/holdout | Keep only high-confidence route abbreviations and only inside explicit table evidence |
+| 59 | Extended explicit table/list extraction with multi-cell row reconstruction, inverse `label <- value` binding, numeric direction checks (`до` vs `более`), generic table-header filtering, and structural group completion for multi selections | 0.7759 | 0.8291 | Fixed a dev inverse-table case (`value` in the question, answer in the left column) and targeted shock-severity multi rows where several correct options live in one reconstructed table row | Train and holdout exact stayed unchanged; broad multi-cell extraction remains noisy when table headers or neighboring rows are flattened into the same PDF line window | Continue with conservative table membership extraction for full-table drug lists, but avoid broad caption-only boosts |
 
 Best current variant: iteration 58 for the current answer-keyed corpus, including newly available `42-skvoz`.
 
@@ -70,13 +71,13 @@ Current gate result after continuation:
 
 - `npm test`: pass
 - `npm run typecheck`: pass
-- `npm run eval`: pass, dev exact accuracy `366/473 = 0.7738`
+- `npm run eval`: pass, dev exact accuracy `367/473 = 0.7759`
 - `npm run eval:holdout`: pass, holdout exact accuracy `456/550 = 0.8291`
 - train split: `1106/1597 = 0.6925`, `17` unkeyed cases skipped
-- answer-keyed overall: `1928/2620 = 0.7359`
-- all cases including unkeyed denominator: `1928/2637 = 0.7311`
+- answer-keyed overall: `1929/2620 = 0.7363`
+- all cases including unkeyed denominator: `1929/2637 = 0.7315`
 - single overall: `1464/1811 = 0.8084`
-- multi exact overall: `464/809 = 0.5735`
+- multi exact overall: `465/809 = 0.5748`
 - new overall target `>= 0.80` is not reached; shortfall is `169` additional exact answers on keyed cases.
 
 Iteration 39 rejected attempts:

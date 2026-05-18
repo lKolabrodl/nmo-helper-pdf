@@ -1981,6 +1981,7 @@ function coordinateGroupHeaderCells(cells) {
     "\u043a\u0440\u0438\u0442\u0435\u0440",
     "\u043f\u0440\u0438\u0437\u043d\u0430\u043a",
     "\u043a\u0430\u0442\u0435\u0433\u043e\u0440",
+    "\u044d\u0444\u0444\u0435\u043a\u0442",
   ]
     .map((item) => normalizeForSearch(item))
     .filter((cue) => containsNormalizedPhrase(normalized, cue)).length;
@@ -2095,6 +2096,135 @@ function buildCoordinateTableGroupsByPage(pages, topQuestionPages) {
   return byPage;
 }
 
+function coordinateMultiCellHeaderRow(cells) {
+  const first = normalizeForSearch(cells[0]?.text ?? "");
+  const rest = normalizeForSearch(
+    cells
+      .slice(1)
+      .map((cell) => cell.text)
+      .join(" "),
+  );
+  const firstHeader =
+    containsNormalizedPhrase(first, "\u0441\u0442\u0435\u043f\u0435\u043d") ||
+    containsNormalizedPhrase(first, "\u0441\u0442\u0430\u0434") ||
+    containsNormalizedPhrase(first, "\u043a\u043b\u0430\u0441\u0441") ||
+    containsNormalizedPhrase(first, "\u043a\u0430\u0442\u0435\u0433\u043e\u0440") ||
+    containsNormalizedPhrase(first, "\u0433\u0440\u0443\u043f\u043f");
+  const restHeader =
+    containsNormalizedPhrase(rest, "\u043a\u043b\u0438\u043d\u0438\u0447") ||
+    containsNormalizedPhrase(rest, "\u043f\u0440\u0438\u0437\u043d\u0430\u043a") ||
+    containsNormalizedPhrase(rest, "\u043e\u0431\u044a\u0435\u043c") ||
+    containsNormalizedPhrase(rest, "\u0437\u043d\u0430\u0447\u0435\u043d") ||
+    containsNormalizedPhrase(rest, "\u043f\u043e\u043a\u0430\u0437");
+  return firstHeader && restHeader;
+}
+
+function coordinateMultiCellGenericLabel(text) {
+  const normalized = normalizeForSearch(text);
+  return [
+    "\u044d\u0444\u0444\u0435\u043a\u0442",
+    "\u0433\u0440\u0443\u043f\u043f\u0430",
+    "\u043f\u0440\u0438\u0437\u043d\u0430\u043a",
+    "\u043f\u043e\u043a\u0430\u0437\u0430\u0442\u0435\u043b\u044c",
+    "\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u0435",
+    "\u043f\u0440\u0435\u043f\u0430\u0440\u0430\u0442\u044b",
+    "\u0441\u043f\u043e\u0441\u043e\u0431",
+  ].some((cue) => containsNormalizedPhrase(normalized, cue));
+}
+
+function coordinateMultiCellGenericValue(text) {
+  const normalized = normalizeForSearch(text);
+  return [
+    "\u0433\u0440\u0443\u043f\u043f\u0430",
+    "\u043f\u0440\u0435\u043f\u0430\u0440\u0430\u0442\u044b",
+    "\u0441\u043f\u043e\u0441\u043e\u0431 \u043f\u0440\u0438\u043c\u0435\u043d\u0435\u043d\u0438\u044f",
+  ].some((cue) => containsNormalizedPhrase(normalized, cue));
+}
+
+function coordinateMultiCellRows(page) {
+  if (page.__coordinateMultiCellRows) return page.__coordinateMultiCellRows;
+  const lines = page.lineItems ?? [];
+  const rows = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    const cells = coordinateGroupLineCells(line).map((cell) => ({ ...cell }));
+    if (!coordinateGroupLineLooksLikeStart(cells)) continue;
+    if (coordinateGroupHeaderCells(cells) || coordinateMultiCellHeaderRow(cells)) continue;
+    const headerText = coordinateNearbyTableContext(lines, index);
+    if (!coordinateTextHasExplicitTableCaption(headerText)) continue;
+
+    const labelCell = cells[0];
+    const labelText = coordinateCellText(labelCell);
+    if (labelText.length < 3 || labelText.length > 90) continue;
+    if (coordinateMultiCellGenericLabel(labelText) && coordinateMultiCellGenericValue(cells.slice(1).map((cell) => cell.text).join(" "))) continue;
+
+    const labelX = labelCell.x ?? 0;
+    const valueParts = cells.slice(1).map((cell) => coordinateCellText(cell)).filter(Boolean);
+    if (!valueParts.length) continue;
+    const rowLineTexts = [line.text];
+
+    let previousY = line?.y ?? 0;
+    for (let nextIndex = index + 1; nextIndex < lines.length && nextIndex <= index + 12; nextIndex += 1) {
+      const nextLine = lines[nextIndex];
+      const y = nextLine?.y ?? previousY;
+      if (Math.abs(y - previousY) > 28) break;
+      if (coordinateLooksLikeTableBoundary(nextLine)) break;
+      const nextCells = coordinateGroupLineCells(nextLine).map((cell) => ({ ...cell }));
+      if (!nextCells.length) break;
+      const nextStartsRow =
+        coordinateGroupLineLooksLikeStart(nextCells) &&
+        Math.abs((nextCells[0]?.x ?? 0) - labelX) <= 36 &&
+        coordinateCellText(nextCells[0]).length >= 3;
+      if (nextStartsRow) break;
+
+      const continuation = nextCells
+        .filter((cell) => (cell.x ?? 0) > labelX + 48)
+        .map((cell) => coordinateCellText(cell))
+        .filter(Boolean);
+      if (!continuation.length) break;
+      valueParts.push(...continuation);
+      rowLineTexts.push(nextLine.text);
+      previousY = y;
+    }
+
+    const valueText = valueParts.join(" ").replace(/\s+/g, " ").trim();
+    const text = `${labelText} ${valueText}`.replace(/\s+/g, " ").trim();
+    if (valueText.length < 8 || text.length < 14) continue;
+    rows.push({
+      page: page.page,
+      index,
+      y: line?.y ?? 0,
+      headerText,
+      labelText,
+      valueText,
+      text,
+      sourceText: rowLineTexts.join(" ").replace(/\s+/g, " ").trim(),
+      labelX,
+      labelTokens: uniqueTokens(labelText),
+      valueTokens: uniqueTokens(valueText),
+    });
+  }
+
+  Object.defineProperty(page, "__coordinateMultiCellRows", {
+    value: rows,
+    enumerable: false,
+  });
+  return rows;
+}
+
+function buildCoordinateMultiCellRowsByPage(pages, topQuestionPages) {
+  const byPage = new Map();
+  for (const page of pages) {
+    const nearTopPage =
+      !topQuestionPages?.size || topQuestionPages.has(page.page) || topQuestionPages.has(page.page - 1) || topQuestionPages.has(page.page + 1);
+    if (!nearTopPage) continue;
+    const rows = coordinateMultiCellRows(page);
+    if (rows.length) byPage.set(page.page, rows);
+  }
+  return byPage;
+}
+
 function coordinateTableFocusTokens(question, focusTokens, answerTokens) {
   const answerSet = new Set(answerTokens ?? []);
   const out = [];
@@ -2143,10 +2273,81 @@ function coordinateRouteSynonymSupport(answerText, cellText) {
 function severityCue(text) {
   const normalized = normalizeForSearch(text);
   if (containsNormalizedPhrase(normalized, "\u043a\u0440\u0430\u0439\u043d") && containsNormalizedPhrase(normalized, "\u0442\u044f\u0436")) return "very_severe";
-  if (containsNormalizedPhrase(normalized, "\u0441\u0440\u0435\u0434\u043d\u0435\u0442\u044f\u0436") || (containsNormalizedPhrase(normalized, "\u0441\u0440\u0435\u0434\u043d") && containsNormalizedPhrase(normalized, "\u0442\u044f\u0436")) || containsNormalizedPhrase(normalized, "\u0443\u043c\u0435\u0440\u0435\u043d")) return "moderate";
+  if (
+    containsNormalizedPhrase(normalized, "\u0441\u0440\u0435\u0434\u043d\u0435\u0442\u044f\u0436") ||
+    containsNormalizedPhrase(normalized, "\u0441\u0440\u0435\u0434\u043d") ||
+    containsNormalizedPhrase(normalized, "\u0443\u043c\u0435\u0440\u0435\u043d")
+  ) {
+    return "moderate";
+  }
   if (containsNormalizedPhrase(normalized, "\u0442\u044f\u0436\u0435\u043b")) return "severe";
   if (containsNormalizedPhrase(normalized, "\u043b\u0435\u0433\u043a")) return "mild";
   return null;
+}
+
+function coordinateDirectionCuesAroundNumber(normalizedText, number) {
+  const forms = [...new Set(expandNumberToken(number).map((item) => normalizeForSearch(item)).filter(Boolean))];
+  const directions = new Set();
+  for (const form of forms) {
+    let start = 0;
+    while (start < normalizedText.length) {
+      const index = normalizedText.indexOf(form, start);
+      if (index < 0) break;
+      if (!numericSearchBoundary(normalizedText, index, form.length)) {
+        start = index + Math.max(1, form.length);
+        continue;
+      }
+      const local = normalizedText.slice(Math.max(0, index - 32), Math.min(normalizedText.length, index + form.length + 20));
+      if (
+        containsNormalizedPhrase(local, "\u0431\u043e\u043b\u0435\u0435") ||
+        containsNormalizedPhrase(local, "\u0431\u043e\u043b\u044c\u0448\u0435") ||
+        containsNormalizedPhrase(local, "\u0432\u044b\u0448\u0435") ||
+        />|>=/u.test(local)
+      ) {
+        directions.add("gt");
+      }
+      if (
+        containsNormalizedPhrase(local, "\u043c\u0435\u043d\u0435\u0435") ||
+        containsNormalizedPhrase(local, "\u043c\u0435\u043d\u044c\u0448\u0435") ||
+        containsNormalizedPhrase(local, "\u043d\u0438\u0436\u0435") ||
+        containsNormalizedPhrase(local, "\u0434\u043e ") ||
+        /<|<=/u.test(local)
+      ) {
+        directions.add("lt");
+      }
+      if (
+        containsNormalizedPhrase(local, "\u043d\u0435 \u0431\u043e\u043b\u0435\u0435") ||
+        containsNormalizedPhrase(local, "\u043d\u0435\u0431\u043e\u043b\u0435\u0435")
+      ) {
+        directions.delete("gt");
+        directions.add("lt");
+      }
+      if (
+        containsNormalizedPhrase(local, "\u043d\u0435 \u043c\u0435\u043d\u0435\u0435") ||
+        containsNormalizedPhrase(local, "\u043d\u0435\u043c\u0435\u043d\u0435\u0435")
+      ) {
+        directions.delete("lt");
+        directions.add("gt");
+      }
+      start = index + Math.max(1, form.length);
+    }
+  }
+  return directions;
+}
+
+function coordinateNumericDirectionCompatible(cellText, answerText, answerNumbers) {
+  if (!answerNumbers.length) return true;
+  const normalizedCell = normalizeForSearch(cellText);
+  const normalizedAnswer = normalizeForSearch(answerText);
+  for (const number of answerNumbers) {
+    const answerDirections = coordinateDirectionCuesAroundNumber(normalizedAnswer, number);
+    if (!answerDirections.size) continue;
+    const cellDirections = coordinateDirectionCuesAroundNumber(normalizedCell, number);
+    if (!cellDirections.size) continue;
+    const sameDirection = [...answerDirections].some((direction) => cellDirections.has(direction));
+    if (!sameDirection) return false;
+  }
+  return true;
 }
 
 function coordinateCellAnswerSupport(cell, answer, answerTokens, answerPhrases, answerNumbers) {
@@ -2306,33 +2507,142 @@ function bestCoordinateTableGroupSupport({
       const synonymSupport = coordinateRouteSynonymSupport(answer.text, `${group.valueText} ${group.headerText}`);
       const effectiveAnswerSupport = Math.max(answerSupport.support, synonymSupport);
       const minAnswerSupport = answerNumbers.length ? 0.5 : 0.58;
-      if (effectiveAnswerSupport < minAnswerSupport) continue;
       const lexicalAnswerSupport = answerTokens.length ? strictSoftCoverage(answerTokens, answerSupport.tokens) : 0;
-      if (!answerSupport.phraseHit && synonymSupport <= 0 && lexicalAnswerSupport < 0.42) continue;
+      if (effectiveAnswerSupport >= minAnswerSupport && (answerSupport.phraseHit || synonymSupport > 0 || lexicalAnswerSupport >= 0.42)) {
+        const labelCoverage = tableFocus.length ? coverage(tableFocus, group.labelTokens) : 0;
+        const labelHits = tokenHitCount(tableFocus, group.labelTokens);
+        const headerCoverage = tableFocus.length ? coverage(tableFocus, uniqueTokens(group.headerText)) : 0;
+        const hasSpecificLabel = labelCoverage >= 0.22 || labelHits >= Math.min(3, Math.max(2, Math.ceil(tableFocus.length * 0.25)));
+        if ((hasSpecificLabel || headerCoverage >= 0.42) && coordinateCompoundFocusMatches(tableFocus, group.labelTokens)) {
+          const score =
+            14.6 +
+            Math.min(1, effectiveAnswerSupport) * 8.6 +
+            Math.min(0.78, labelCoverage) * 8.2 +
+            Math.min(4, labelHits) * 1.45 +
+            Math.min(0.5, headerCoverage) * 2.0 +
+            (answerSupport.phraseHit ? 1.4 : 0) +
+            synonymSupport * 1.4 +
+            lexicalAnswerSupport * 2.0 +
+            answerSupport.numericCoverage * 2.2;
+          best = betterEvidence(best, {
+            answerId: answer.id,
+            page: group.page,
+            text: `${group.headerText} | ${group.labelText} -> ${group.valueText}`.replace(/\s+/g, " ").trim(),
+            score,
+            kind: "coordinate_table_group",
+          });
+        }
+      }
 
-      const labelCoverage = tableFocus.length ? coverage(tableFocus, group.labelTokens) : 0;
-      const labelHits = tokenHitCount(tableFocus, group.labelTokens);
-      const headerCoverage = tableFocus.length ? coverage(tableFocus, uniqueTokens(group.headerText)) : 0;
-      const hasSpecificLabel = labelCoverage >= 0.22 || labelHits >= Math.min(3, Math.max(2, Math.ceil(tableFocus.length * 0.25)));
-      if (!hasSpecificLabel && headerCoverage < 0.42) continue;
-      if (!coordinateCompoundFocusMatches(tableFocus, group.labelTokens)) continue;
+      const inverseFocusCoverage = tableFocus.length ? coverage(tableFocus, group.valueTokens) : 0;
+      const inverseFocusHits = tokenHitCount(tableFocus, group.valueTokens);
+      const inverseHeaderCoverage = tableFocus.length ? coverage(tableFocus, uniqueTokens(group.headerText)) : 0;
+      const inverseFocusSupported =
+        inverseFocusCoverage >= 0.28 ||
+        inverseFocusHits >= Math.min(3, Math.max(2, Math.ceil(tableFocus.length * 0.25))) ||
+        (inverseHeaderCoverage >= 0.42 && inverseFocusHits >= 1);
+      if (!inverseFocusSupported) continue;
 
-      const score =
-        14.6 +
-        Math.min(1, effectiveAnswerSupport) * 8.6 +
-        Math.min(0.78, labelCoverage) * 8.2 +
-        Math.min(4, labelHits) * 1.45 +
-        Math.min(0.5, headerCoverage) * 2.0 +
-        (answerSupport.phraseHit ? 1.4 : 0) +
-        synonymSupport * 1.4 +
-        lexicalAnswerSupport * 2.0 +
-        answerSupport.numericCoverage * 2.2;
+      const inverseAnswerSupport = coordinateCellAnswerSupport(
+        { text: group.labelText, index: 0 },
+        answer,
+        answerTokens,
+        answerPhrases,
+        answerNumbers,
+      );
+      const inverseSynonymSupport = coordinateRouteSynonymSupport(answer.text, `${group.labelText} ${group.headerText}`);
+      const inverseEffectiveAnswerSupport = Math.max(inverseAnswerSupport.support, inverseSynonymSupport);
+      const inverseMinAnswerSupport = answerNumbers.length ? 0.5 : 0.58;
+      if (inverseEffectiveAnswerSupport < inverseMinAnswerSupport) continue;
+      const inverseLexicalAnswerSupport = answerTokens.length ? strictSoftCoverage(answerTokens, inverseAnswerSupport.tokens) : 0;
+      if (!inverseAnswerSupport.phraseHit && inverseSynonymSupport <= 0 && inverseLexicalAnswerSupport < 0.42) continue;
+
+      const inverseScore =
+        14.4 +
+        Math.min(1, inverseEffectiveAnswerSupport) * 8.2 +
+        Math.min(0.78, inverseFocusCoverage) * 8.0 +
+        Math.min(4, inverseFocusHits) * 1.35 +
+        Math.min(0.5, inverseHeaderCoverage) * 1.6 +
+        (inverseAnswerSupport.phraseHit ? 1.2 : 0) +
+        inverseSynonymSupport * 1.2 +
+        inverseLexicalAnswerSupport * 1.8 +
+        inverseAnswerSupport.numericCoverage * 2.0;
       best = betterEvidence(best, {
         answerId: answer.id,
         page: group.page,
-        text: `${group.headerText} | ${group.labelText} -> ${group.valueText}`.replace(/\s+/g, " ").trim(),
+        text: `${group.headerText} | ${group.valueText} <- ${group.labelText}`.replace(/\s+/g, " ").trim(),
+        score: inverseScore,
+        kind: "coordinate_table_group_inverse",
+      });
+    }
+  }
+
+  return best;
+}
+
+function bestCoordinateMultiCellRowSupport({
+  mode,
+  question,
+  answer,
+  answerTokens,
+  focusTokens,
+  coordinateMultiCellRowsByPage,
+}) {
+  if (mode !== "multi") return null;
+  if (!coordinateMultiCellRowsByPage) return null;
+  const answerNumbers = extractNumbers(answer.text);
+  const answerPhrases = answerSearchPhrases(answer.text).slice(0, 12);
+  const tableFocus = coordinateTableFocusTokens(question, focusTokens, answerTokens);
+  if (tableFocus.length < 1 && !answerNumbers.length) return null;
+  const questionSeverity = severityCue(question);
+  let best = null;
+
+  for (const rows of coordinateMultiCellRowsByPage.values()) {
+    for (const row of rows) {
+      const rowSeverity = severityCue(row.labelText);
+      if (questionSeverity && rowSeverity !== questionSeverity) continue;
+      const labelCoverage = tableFocus.length ? coverage(tableFocus, row.labelTokens) : 0;
+      const labelHits = tokenHitCount(tableFocus, row.labelTokens);
+      const headerCoverage = tableFocus.length ? coverage(tableFocus, uniqueTokens(row.headerText)) : 0;
+      const labelSupported = questionSeverity || labelCoverage >= 0.18 || labelHits >= 1;
+      if (!labelSupported && headerCoverage < 0.38) continue;
+
+      const answerSupport = coordinateCellAnswerSupport(
+        { text: row.valueText, index: 1 },
+        answer,
+        answerTokens,
+        answerPhrases,
+        answerNumbers,
+      );
+      if (!coordinateNumericDirectionCompatible(row.valueText, answer.text, answerNumbers)) continue;
+      const synonymSupport = coordinateRouteSynonymSupport(answer.text, `${row.valueText} ${row.headerText}`);
+      const effectiveAnswerSupport = Math.max(answerSupport.support, synonymSupport);
+      const answerTokenHits = tokenHitCount(answerTokens, answerSupport.tokens);
+      const longListSupport = answerTokens.length >= 6 && answerTokenHits >= 4 && answerSupport.support >= 0.52;
+      const minAnswerSupport = longListSupport ? 0.52 : answerNumbers.length ? 0.5 : 0.58;
+      if (effectiveAnswerSupport < minAnswerSupport) continue;
+      const lexicalAnswerSupport = answerTokens.length ? strictSoftCoverage(answerTokens, answerSupport.tokens) : 0;
+      const minLexicalSupport = longListSupport ? 0.5 : 0.38;
+      if (!answerSupport.phraseHit && synonymSupport <= 0 && lexicalAnswerSupport < minLexicalSupport) continue;
+
+      const score =
+        14.2 +
+        Math.min(1, effectiveAnswerSupport) * 8.3 +
+        Math.min(0.75, labelCoverage) * 7.4 +
+        Math.min(3, labelHits) * 1.4 +
+        (questionSeverity ? 2.2 : 0) +
+        Math.min(0.5, headerCoverage) * 2.0 +
+        (answerSupport.phraseHit ? 1.4 : 0) +
+        synonymSupport * 1.3 +
+        lexicalAnswerSupport * 1.8 +
+        answerSupport.numericCoverage * 2.0 +
+        (longListSupport ? 1.2 : 0);
+      best = betterEvidence(best, {
+        answerId: answer.id,
+        page: row.page,
+        text: `${row.headerText} | ${row.labelText} -> ${row.valueText}`.replace(/\s+/g, " ").trim(),
         score,
-        kind: "coordinate_table_group",
+        kind: "coordinate_table_multicell_row",
       });
     }
   }
@@ -5712,6 +6022,7 @@ function scoreAnswer(context) {
   const visualTableColumn = bestVisualTableColumnSupport(context);
   const coordinateTableRow = bestCoordinateTableRowSupport(context);
   const coordinateTableGroup = bestCoordinateTableGroupSupport(context);
+  const coordinateMultiCellRow = bestCoordinateMultiCellRowSupport(context);
   const latinFuzzy = bestLatinFuzzySupport(context);
   const geneSentence = bestGeneSentenceSupport(context);
   const clinicalFeature = clinicalFeatureAdjustment(context);
@@ -5775,6 +6086,7 @@ function scoreAnswer(context) {
     (visualTableColumn?.score ?? 0) * 1.18 +
     (coordinateTableRow?.score ?? 0) * 1.12 +
     (coordinateTableGroup?.score ?? 0) * 1.16 +
+    (coordinateMultiCellRow?.score ?? 0) * 1.16 +
     (latinFuzzy?.score ?? 0) * latinFuzzyWeight +
     (geneSentence?.score ?? 0) * 1.18 +
     (clinicalFeature.support?.score ?? 0) * 1.12 +
@@ -5842,6 +6154,7 @@ function scoreAnswer(context) {
     visualTableColumn,
     coordinateTableRow,
     coordinateTableGroup,
+    coordinateMultiCellRow,
     latinFuzzy,
     geneSentence,
     clinicalFeature.support,
@@ -5906,6 +6219,10 @@ export async function predict(input, options: any = {}) {
     mode === "multi" && hasCoordinateTableGroupCue(question, focusTokens, intent)
       ? buildCoordinateTableGroupsByPage(runtime.pdfText.pages, topQuestionPages)
       : null;
+  const coordinateMultiCellRowsByPage =
+    mode === "multi" && hasCoordinateTableGroupCue(question, focusTokens, intent)
+      ? buildCoordinateMultiCellRowsByPage(runtime.pdfText.pages, topQuestionPages)
+      : null;
 
   let answerScores = answers.map((answer) => {
     const answerTokens = uniqueTokens(answer.text);
@@ -5930,6 +6247,7 @@ export async function predict(input, options: any = {}) {
       visualTableColumnTargetsByPage,
       coordinateTableRowsByPage,
       coordinateTableGroupsByPage,
+      coordinateMultiCellRowsByPage,
     });
     return {
       answer,

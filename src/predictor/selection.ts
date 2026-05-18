@@ -6,6 +6,8 @@ const STRUCTURAL_EVIDENCE_WEIGHTS = new Map(
   Object.entries({
     coordinate_table_row: 1.25,
     coordinate_table_group: 1.25,
+    coordinate_table_group_inverse: 1.25,
+    coordinate_table_multicell_row: 1.25,
     visual_table_column: 1.2,
     exact_short_label_visual_row: 1.15,
     short_label_visual_row: 1.05,
@@ -130,6 +132,9 @@ export function selectAnswers(scored: ReturnType<typeof calibrateScores>, mode: 
   }
   if (config.multiCardinalityModel) {
     selected = applyMultiCardinalityModel(sorted, selected, scored);
+  }
+  if (config.multiCardinalityModel) {
+    selected = applyStructuralEvidenceGroupCompletion(sorted, selected, scored);
   }
   selected = dedupeSelectedByAnswerText(selected, sorted);
   if (!selected.length && sorted.length) selected = [sorted[0].answer.id];
@@ -297,6 +302,47 @@ function applyMultiCardinalityModel(sorted: ReturnType<typeof calibrateScores>, 
   }
 
   return selected.sort((a, b) => scored.findIndex((item) => item.answer.id === a) - scored.findIndex((item) => item.answer.id === b));
+}
+
+const STRUCTURAL_GROUP_COMPLETION_KINDS = new Set(["coordinate_table_multicell_row"]);
+
+function structuralGroupEvidenceKey(evidence: AnswerScore["evidence"][number]) {
+  if (!STRUCTURAL_GROUP_COMPLETION_KINDS.has(evidence.kind)) return "";
+  if ((evidence.score ?? 0) < 24 || (evidence.text?.length ?? 0) < 80) return "";
+  return `${evidence.kind}:${evidence.page}:${normalizeForSearch(evidence.text).slice(0, 520)}`;
+}
+
+function applyStructuralEvidenceGroupCompletion(
+  sorted: ReturnType<typeof calibrateScores>,
+  selectedIds: string[],
+  scored: ReturnType<typeof calibrateScores>,
+) {
+  if (selectedIds.length < 2 || sorted.length < 3) return selectedIds;
+  const selected = new Set(selectedIds);
+  const selectedGroupCounts = new Map<string, number>();
+
+  for (const item of sorted) {
+    if (!selected.has(item.answer.id)) continue;
+    const keys = new Set((item.evidence ?? []).map(structuralGroupEvidenceKey).filter(Boolean));
+    for (const key of keys) selectedGroupCounts.set(key, (selectedGroupCounts.get(key) ?? 0) + 1);
+  }
+
+  const strongGroups = new Set([...selectedGroupCounts.entries()].filter(([, count]) => count >= 2).map(([key]) => key));
+  if (!strongGroups.size) return selectedIds;
+
+  const topRaw = sorted[0]?.raw ?? 0;
+  const additions = [];
+  for (const item of sorted) {
+    if (selected.has(item.answer.id)) continue;
+    if (item.raw < Math.max(12, topRaw * 0.42)) continue;
+    const evidence = (item.evidence ?? []).find((entry) => strongGroups.has(structuralGroupEvidenceKey(entry)));
+    if (!evidence) continue;
+    additions.push(item.answer.id);
+    if (additions.length >= 2) break;
+  }
+
+  if (!additions.length) return selectedIds;
+  return [...selectedIds, ...additions].sort((a, b) => scored.findIndex((item) => item.answer.id === a) - scored.findIndex((item) => item.answer.id === b));
 }
 
 function applyMultiAllOptionsGuard(sorted: ReturnType<typeof calibrateScores>, selectedIds: string[], scored: ReturnType<typeof calibrateScores>) {

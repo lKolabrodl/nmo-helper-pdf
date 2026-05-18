@@ -327,6 +327,13 @@ Iteration 58 route-abbreviation dictionary outcome:
 - Rejected: a broader English route dictionary (`IV/IM/SC/SQ/PO/oral`) because it added no exact gain on train/dev/holdout and increases ambiguity surface.
 - Outcome: dev remains `366/473 = 0.7738`; holdout remains `456/550 = 0.8291`; no regression.
 
+Iteration 59 table/list extraction outcome:
+
+- Hypothesis 1: some multi questions point to one explicit table row where several correct answer options live in neighboring cells or continuation lines. Kept as `coordinate_table_multicell_row` plus structural group completion: if two selected answers share the same reconstructed row, another strongly supported answer from that row can be added.
+- Hypothesis 2: some tables need inverse binding, because the question describes the right column (`value`) while answer options are labels from the left column. Kept as `coordinate_table_group_inverse`, gated to explicit table captions and value-side focus support.
+- Hypothesis 3: broad multi-cell extraction is risky. Confirmed: generic table headers such as `Эффект | Группа` and neighboring rows can flatten into one noisy row. Retained mitigations: generic header filtering, row-category checks, and numeric direction compatibility (`до`/`менее` vs `более`/`выше`).
+- Outcome: dev improves to `367/473 = 0.7759`; dev multi exact improves from `0.6319` to `0.6389`; holdout remains `456/550 = 0.8291`; train remains `1106/1597 = 0.6925`.
+
 Concrete next steps:
 
 - extract text items with coordinates into table-like rows/columns, not only paragraphs;

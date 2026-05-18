@@ -56,16 +56,16 @@ Command: `npm run eval`
 ```json
 {
   "total": 473,
-  "correct": 366,
-  "exactAccuracy": 0.7738,
+  "correct": 367,
+  "exactAccuracy": 0.7759,
   "singleAccuracy": 0.8359,
-  "multiExactAccuracy": 0.6319,
-  "macroAccuracyByPdf": 0.7822,
+  "multiExactAccuracy": 0.6389,
+  "macroAccuracyByPdf": 0.7839,
   "noEvidence": 0,
-  "avgConfidenceCorrect": 0.9159,
-  "avgConfidenceIncorrect": 0.8628,
+  "avgConfidenceCorrect": 0.9157,
+  "avgConfidenceIncorrect": 0.8621,
   "errorBuckets": {
-    "confused_with_distractor": 71,
+    "confused_with_distractor": 70,
     "multi_cardinality": 36
   },
   "skippedNoExpected": 0
@@ -87,7 +87,7 @@ The command returned exit code `0` because the acceptance target was met.
   "multiExactAccuracy": 0.7344,
   "macroAccuracyByPdf": 0.827,
   "noEvidence": 0,
-  "avgConfidenceCorrect": 0.9249,
+  "avgConfidenceCorrect": 0.9254,
   "avgConfidenceIncorrect": 0.8702,
   "errorBuckets": {
     "confused_with_distractor": 67,
@@ -112,17 +112,17 @@ Holdout by PDF:
 
 ## Current All 42 PDF Groups
 
-Combining train, dev, and holdout diagnostic runs gives `1928/2620 = 0.7359` exact accuracy across all answer-keyed groups (`73.59%`). This is the user-requested overall metric for the current continuation. Including the `17` unkeyed `22-eozif` cases as denominator gives `1928/2637 = 0.7311`.
+Combining train, dev, and holdout diagnostic runs gives `1929/2620 = 0.7363` exact accuracy across all answer-keyed groups (`73.63%`). This is the user-requested overall metric for the current continuation. Including the `17` unkeyed `22-eozif` cases as denominator gives `1929/2637 = 0.7315`.
 
 Latest split percentages:
 
 | split | correct / total | exact accuracy |
 | --- | ---: | ---: |
 | train | `1106/1597` | `69.25%` |
-| dev | `366/473` | `77.38%` |
+| dev | `367/473` | `77.59%` |
 | holdout | `456/550` | `82.91%` |
-| all answer-keyed cases | `1928/2620` | `73.59%` |
-| all cases including 17 unkeyed `22-eozif` cases | `1928/2637` | `73.11%` |
+| all answer-keyed cases | `1929/2620` | `73.63%` |
+| all cases including 17 unkeyed `22-eozif` cases | `1929/2637` | `73.15%` |
 
 Per-PDF percentages across all 42 groups:
 
@@ -139,7 +139,7 @@ Per-PDF percentages across all 42 groups:
 | `09-covid` | `57/70` | `81.43%` |
 | `10-LPP` | `50/70` | `71.43%` |
 | `11-mening` | `60/70` | `85.71%` |
-| `12-nos` | `18/30` | `60.00%` |
+| `12-nos` | `21/30` | `70.00%` |
 | `13-pisha` | `45/70` | `64.29%` |
 | `14-sarkoidoz` | `68/80` | `85.00%` |
 | `15-toxic` | `50/70` | `71.43%` |
@@ -157,14 +157,14 @@ Per-PDF percentages across all 42 groups:
 | `27-cistit` | `21/30` | `70.00%` |
 | `28-tanzilt` | `38/50` | `76.00%` |
 | `29-tpank` | `44/70` | `62.86%` |
-| `30-heart` | `43/70` | `61.43%` |
+| `30-heart` | `42/70` | `60.00%` |
 | `31-hbs` | `31/43` | `72.09%` |
-| `32-gemor` | `53/70` | `75.71%` |
+| `32-gemor` | `54/70` | `77.14%` |
 | `33-aorta` | `55/70` | `78.57%` |
 | `34-covid` | `57/70` | `81.43%` |
 | `35-cron` | `41/72` | `56.94%` |
 | `36-anrid` | `43/70` | `61.43%` |
-| `37-bazal` | `42/70` | `60.00%` |
+| `37-bazal` | `40/70` | `57.14%` |
 | `38-katarakta` | `23/30` | `76.67%` |
 | `39-glaurova` | `47/69` | `68.12%` |
 | `40-deficit` | `38/50` | `76.00%` |

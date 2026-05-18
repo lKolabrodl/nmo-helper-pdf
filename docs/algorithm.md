@@ -89,6 +89,8 @@ The predictor returns machine-readable JSON:
    - `count_relation_segment` for single-answer count questions whose variants are short numeric answers, binding the number to local count/relation cues and question focus while ignoring long biomedical answers that only contain incidental numeric tokens;
    - `contrast_cue_mismatch` for multi-answer variants whose strongest evidence contains the opposite cue, such as upper vs lower/basal, increased vs decreased, or distal-proximal vs proximal-distal order;
    - `coordinate_table_group` for multi-answer rows in explicit PDF tables: coordinate-extracted left labels are bound to right-side value cells, row continuations are merged, compound labels such as `X/Y` must match all question-focus parts, and numeric-only matches are rejected unless there is lexical or synonym support;
+   - `coordinate_table_group_inverse` for the opposite table shape, when the question describes the right-side value cell and the answer option is the left-side label;
+   - `coordinate_table_multicell_row` for explicit table rows where one row contains several answerable values across multiple cells/continuation lines; it checks row category cues such as severity, rejects generic header rows, and verifies numeric direction compatibility for expressions like `до 120` vs `более 120`;
    - `roman_stage_segment` for table-style roman stage rows under a `Стадия` heading, including questions written as `II стадия`;
    - `temporal_cue_match` / `temporal_cue_mismatch` for single-answer day/night cues;
    - `bm25_question_answer`;
@@ -103,6 +105,7 @@ The predictor returns machine-readable JSON:
    - conservative multi-answer cardinality adjustments;
    - an all-options guard for 3- and 4-option multi questions, because selecting every option is almost always an over-selection in this corpus;
    - a crowded-tail guard for 4-option multi questions where 3 answers were selected but the third and fourth raw scores are nearly tied; this trims the ambiguous tail to top-2 rather than treating a weak 3-of-4 set as reliable;
+   - structural group completion for explicit multi-cell table rows: if two selected answers are supported by the same reconstructed row, a weaker candidate from that same row can be added when it has strong structural evidence;
    - generic structural-cluster pruning for recommendation-like multi questions, gated away from broad list/source/dose-regimen patterns;
    - generic-population adjustment for multi recommendations, applied only when a broad population answer has a more specific same-population alternative among the options.
 9. Calibrate scores with relative spread and a softmax-like transform.
