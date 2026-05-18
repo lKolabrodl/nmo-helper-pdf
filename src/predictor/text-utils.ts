@@ -287,6 +287,31 @@ export function cachedPageTokens(page) {
   return page.__tokens;
 }
 
+export function lineWindowSegments(page, radius = 2) {
+  const lines = page.lines ?? [];
+  const segments = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const text = lines.slice(index, Math.min(lines.length, index + radius + 1)).join(" ").replace(/\s+/g, " ").trim();
+    if (text.length >= 16 && text.length <= 900) {
+      segments.push({
+        text,
+        normalized: normalizeForSearch(text),
+        tokens: tokenize(text),
+      });
+    }
+  }
+  return segments;
+}
+
+export function cachedLineWindowSegments(page) {
+  if (!page.__lineWindowSegments) {
+    Object.defineProperty(page, "__lineWindowSegments", {
+      value: lineWindowSegments(page, 3),
+      enumerable: false,
+    });
+  }
+  return page.__lineWindowSegments;
+}
 
 export function pageWindow(page, center, radius = 1000) {
   const normalized = page.normalized;

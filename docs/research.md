@@ -47,8 +47,9 @@ The best retained version extracts PDF text with `pdfjs-dist`, normalizes Russia
 - conservative multi contrast-cue pruning for opposite option cues such as upper/lower, increased/decreased, and distal-proximal/proximal-distal.
 - conservative coordinate table-group reconstruction for explicit `Таблица` layouts, binding left row labels to right-side values in multi questions and using a small high-confidence RU route dictionary (`per os`/`внутрь`, `в/в`, `в/м`, `п/к`) for administration-route rows.
 - inverse coordinate table binding when the question matches the right-side value and answer options are left-side labels, plus multi-cell row reconstruction with numeric direction checks and structural completion for answers from the same table row.
+- narrow full-answer exact matching for single oral-dose questions where the answer is a multi-number phrase and the PDF contains it near the question focus.
 
-The best current algorithm reaches dev exact accuracy `0.7759` and holdout exact accuracy `0.8291`, passing the required holdout `0.80` acceptance target. The answer-keyed overall score is still `1929/2620 = 0.7363`, so future work is focused on multi-answer set selection and layout-aware evidence.
+The best current algorithm reaches dev exact accuracy `0.7759` and holdout exact accuracy `0.8309`, passing the required holdout `0.80` acceptance target. The answer-keyed overall score is still `1930/2620 = 0.7366`, so future work is focused on multi-answer set selection and layout-aware evidence.
 
 ## Feature Calibrator Research Guardrails
 

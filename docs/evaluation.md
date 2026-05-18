@@ -81,16 +81,16 @@ The command returned exit code `0` because the acceptance target was met.
 ```json
 {
   "total": 550,
-  "correct": 456,
-  "exactAccuracy": 0.8291,
-  "singleAccuracy": 0.8578,
+  "correct": 457,
+  "exactAccuracy": 0.8309,
+  "singleAccuracy": 0.8602,
   "multiExactAccuracy": 0.7344,
-  "macroAccuracyByPdf": 0.827,
+  "macroAccuracyByPdf": 0.8288,
   "noEvidence": 0,
-  "avgConfidenceCorrect": 0.9254,
-  "avgConfidenceIncorrect": 0.8702,
+  "avgConfidenceCorrect": 0.9256,
+  "avgConfidenceIncorrect": 0.8688,
   "errorBuckets": {
-    "confused_with_distractor": 67,
+    "confused_with_distractor": 66,
     "multi_cardinality": 27
   },
   "skippedNoExpected": 0
@@ -104,7 +104,7 @@ Holdout by PDF:
 | `06-co-toksic` | 0.8429 |
 | `11-mening` | 0.8571 |
 | `14-sarkoidoz` | 0.8500 |
-| `17-gepatit` | 0.8429 |
+| `17-gepatit` | 0.8571 |
 | `18-gepatitabc` | 0.8143 |
 | `19-gepatitc` | 0.7800 |
 | `23-nimana` | 0.8429 |
@@ -112,7 +112,7 @@ Holdout by PDF:
 
 ## Current All 42 PDF Groups
 
-Combining train, dev, and holdout diagnostic runs gives `1929/2620 = 0.7363` exact accuracy across all answer-keyed groups (`73.63%`). This is the user-requested overall metric for the current continuation. Including the `17` unkeyed `22-eozif` cases as denominator gives `1929/2637 = 0.7315`.
+Combining train, dev, and holdout diagnostic runs gives `1930/2620 = 0.7366` exact accuracy across all answer-keyed groups (`73.66%`). This is the user-requested overall metric for the current continuation. Including the `17` unkeyed `22-eozif` cases as denominator gives `1930/2637 = 0.7319`.
 
 Latest split percentages:
 
@@ -120,9 +120,9 @@ Latest split percentages:
 | --- | ---: | ---: |
 | train | `1106/1597` | `69.25%` |
 | dev | `367/473` | `77.59%` |
-| holdout | `456/550` | `82.91%` |
-| all answer-keyed cases | `1929/2620` | `73.63%` |
-| all cases including 17 unkeyed `22-eozif` cases | `1929/2637` | `73.15%` |
+| holdout | `457/550` | `83.09%` |
+| all answer-keyed cases | `1930/2620` | `73.66%` |
+| all cases including 17 unkeyed `22-eozif` cases | `1930/2637` | `73.19%` |
 
 Per-PDF percentages across all 42 groups:
 
@@ -144,7 +144,7 @@ Per-PDF percentages across all 42 groups:
 | `14-sarkoidoz` | `68/80` | `85.00%` |
 | `15-toxic` | `50/70` | `71.43%` |
 | `16-hb` | `48/70` | `68.57%` |
-| `17-gepatit` | `59/70` | `84.29%` |
+| `17-gepatit` | `60/70` | `85.71%` |
 | `18-gepatitabc` | `57/70` | `81.43%` |
 | `19-gepatitc` | `39/50` | `78.00%` |
 | `20-hron` | `52/70` | `74.29%` |

@@ -97,6 +97,7 @@ The predictor returns machine-readable JSON:
    - `question_chunk_answer`;
    - `answer_chunk_question`.
    Recent retained row-level signals also include `type_ordinal_segment`, `term_definition_segment`, `recommendation_item_segment`, `drug_dose_segment`, and `fibrosis_stage_row` for tightly scoped type/order, definition, recommendation-row, dose-frequency, and fibrosis-stage row binding. `term_definition_segment` now also handles `X называют...` definition-style multi questions and requires exact in-window abbreviation evidence when an answer option contains an uppercase abbreviation. The fibrosis scorer now also handles METAVIR `F0-F4` descriptor rows such as absent fibrosis, septa-based F2/F3 descriptions, and cirrhosis. Phrase generation also includes safe variants for answers split around hyphens in PDFs and for `ингибиторы <ABBR>` options that may appear as compact `и<ABBR>` text in guidelines.
+   `exact_answer_phrase` is deliberately narrow: it only boosts single-answer oral-dose prompts such as `назначение ... внутрь по`, requires a full multi-number answer phrase in the PDF, and still checks local question-focus tokens.
    A small route synonym dictionary maps high-confidence administration-route forms inside table evidence: `per os`/`внутрь` to peroral, `в/в` to intravenous, `в/м` to intramuscular, and `п/к` to subcutaneous.
 7. Combine evidence into raw answer scores.
 8. Apply a frozen non-LLM feature layer over the evidence kinds:
@@ -124,6 +125,8 @@ The predictor returns machine-readable JSON:
 - `src/predictor/text-utils.ts`: shared phrase, token, evidence, proximity, and number helpers.
 - `src/predictor/scorers/search.ts`: anchor, section, phrase, and row-label retrieval scorers.
 - `src/predictor/scorers/drug-dose.ts`: drug/dose/frequency row scorer.
+- `src/predictor/scorers/exact-answer.ts`: narrow exact full-answer scorer for oral dose prompts.
+- `src/predictor/scorers/frequency.ts`: frequency/duration recommendation scorer.
 - `src/predictor/scorers/recommendation-item.ts`: narrow recommendation item scorer.
 - `src/predictor/scorers/fibrosis-stage.ts`: fibrosis/METAVIR stage row scorer.
 - `src/predictor/types.ts`: answer/evidence score contracts.

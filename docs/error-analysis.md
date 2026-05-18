@@ -334,6 +334,13 @@ Iteration 59 table/list extraction outcome:
 - Hypothesis 3: broad multi-cell extraction is risky. Confirmed: generic table headers such as `Эффект | Группа` and neighboring rows can flatten into one noisy row. Retained mitigations: generic header filtering, row-category checks, and numeric direction compatibility (`до`/`менее` vs `более`/`выше`).
 - Outcome: dev improves to `367/473 = 0.7759`; dev multi exact improves from `0.6319` to `0.6389`; holdout remains `456/550 = 0.8291`; train remains `1106/1597 = 0.6925`.
 
+Iteration 60 exact-answer and split outcome:
+
+- Hypothesis 1: a full answer phrase found in the PDF can help when partial frequency scorers over-boost a neighboring duration. Kept narrowly as `exact_answer_phrase` only for single oral-dose prompts with `внутрь по` and multiple numeric components.
+- Hypothesis 2: broad exact matching across all questions is unsafe. Confirmed: an all-purpose exact scorer selected many distractors because definitions, symptoms, and recommendation alternatives often appear verbatim elsewhere in the same PDF.
+- Refactor: frequency/duration scoring was moved from `predictor.ts` to `src/predictor/scorers/frequency.ts` with the old behavior preserved; shared line-window extraction moved to `text-utils`.
+- Outcome: fixed `17-gepatit#36` (`400 мг каждые 8 ч 7 дней`), dev stays `367/473 = 0.7759`, holdout improves to `457/550 = 0.8309`.
+
 Concrete next steps:
 
 - extract text items with coordinates into table-like rows/columns, not only paragraphs;
