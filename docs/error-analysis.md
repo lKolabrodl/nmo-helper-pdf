@@ -348,3 +348,31 @@ Concrete next steps:
 - add a non-LLM calibrated ranker trained only on train/dev features, then freeze weights for inference;
 - add stronger confidence calibration, because current correct/incorrect confidence averages are too close;
 - consider JS OCR only if future PDFs are scanned or page text is insufficient.
+
+## Rich Diagnostics Layer
+
+Added `npm run diagnostics`, an analysis-only script that reads `.cache/eval/dev-results.json` and `.cache/eval/holdout-results.json` after eval runs. It does not call predictor, does not change runtime selection, and does not feed answer keys back into inference.
+
+The script writes:
+
+- `.cache/eval/diagnostics.json` with enriched error records;
+- `.cache/eval/diagnostics.md` with compact tables for human review.
+
+Each error is annotated with:
+
+- selection shape: under-selected, over-selected, same-count distractor, single wrong-top candidate;
+- question patterns: table/scale, recommendation/treatment, negative/exception, definition, code/classification, gene-symbol, count;
+- option-family patterns: numeric family, all-short-numeric, dense overlapping options, narrow opposing cue families;
+- evidence patterns: broad-only retrieval, flat retrieval, shared multi segment, structural/table evidence, recommendation evidence;
+- `likelyNextWork`: `multi_set_selection`, `recommendation_block_parser`, `option_family_resolver`, `table_or_layout_parser`, `negative_exception_semantics`, `definition_binding`, `retrieval_precision`, or `manual_error_review`.
+
+Current diagnostics from the latest eval artifacts:
+
+- Dev errors: `105`; single `54`, multi `51`.
+- Dev likely next work: `option_family_resolver 28`, `recommendation_block_parser 26`, `multi_set_selection 20`, `table_or_layout_parser 18`.
+- Dev multi likely next work: `multi_set_selection 20`, `recommendation_block_parser 17`, `option_family_resolver 8`, `table_or_layout_parser 6`.
+- Holdout errors: `93`; single `59`, multi `34`.
+- Holdout likely next work: `recommendation_block_parser 39`, `option_family_resolver 22`, `multi_set_selection 17`.
+- Holdout multi likely next work: `multi_set_selection 17`, `recommendation_block_parser 10`, `option_family_resolver 7`.
+
+Interpretation: the next algorithmic work should prioritize multi set selection and recommendation block parsing. Table/layout parsing remains useful, but the latest holdout residuals are less table-heavy than dev.

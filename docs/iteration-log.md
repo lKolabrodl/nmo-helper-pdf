@@ -136,3 +136,16 @@ Iteration 62:
 - `npm run eval`: pass, dev exact accuracy `368/473 = 0.7780`, single `0.8359`, multi `0.6458`.
 - `npm run eval:holdout`: pass, holdout exact accuracy `457/550 = 0.8309`, single `0.8602`, multi `0.7344`.
 - Score delta from iteration 61: dev `+1` exact (`+0.0021`), dev multi `+0.0069`; holdout `+0`.
+
+Iteration 63 diagnostics:
+
+- Added `npm run diagnostics`, an analysis-only script over saved eval artifacts.
+- The script enriches residual errors with selection shape, question patterns, option-family patterns, evidence patterns, likely next work, expected ranks, top raw candidates, and representative examples.
+- Output files: `.cache/eval/diagnostics.json` and `.cache/eval/diagnostics.md`.
+- `npm run typecheck`: pass.
+- Latest diagnostic summary from existing eval artifacts:
+  - dev errors `105`: likely next work is `option_family_resolver 28`, `recommendation_block_parser 26`, `multi_set_selection 20`, `table_or_layout_parser 18`;
+  - dev multi errors `51`: `multi_set_selection 20`, `recommendation_block_parser 17`, `option_family_resolver 8`, `table_or_layout_parser 6`;
+  - holdout errors `93`: `recommendation_block_parser 39`, `option_family_resolver 22`, `multi_set_selection 17`;
+  - holdout multi errors `34`: `multi_set_selection 17`, `recommendation_block_parser 10`, `option_family_resolver 7`.
+- Runtime score delta: none; predictor logic was not changed.
