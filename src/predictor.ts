@@ -4699,6 +4699,92 @@ function contrastCueMismatchAdjustment({ mode, answer }, evidence) {
   return { adjustment: 0, evidence: null };
 }
 
+const EXCLUDED_CONDITION_START_STOP = [
+  "\u0441\u043d\u0438\u0436",
+  "\u043f\u043e\u0432\u044b\u0448",
+  "\u043f\u0440\u0438\u043c\u0435\u043d",
+  "\u043b\u0435\u0447\u0435\u043d",
+  "\u043d\u0430\u0437\u043d\u0430\u0447",
+  "\u043f\u0440\u043e\u0432",
+  "\u043f\u0440\u043e\u0432\u0435\u0434",
+  "\u043f\u0440\u043e\u0432\u0435\u0434\u0435\u043d\u0438\u0435",
+  "\u0438\u0441\u043f\u043e\u043b\u044c\u0437",
+  "\u043a\u043e\u043d\u0446\u0435\u043d\u0442\u0440",
+  "\u043f\u0440\u043e\u0431",
+].flatMap((item) => uniqueTokens(item));
+
+const CONDITION_POSITIVE_CUES = [
+  "\u043f\u0440\u0438",
+  "\u043d\u0430 \u0444\u043e\u043d\u0435",
+  "\u043d\u0430\u043b\u0438\u0447",
+  "\u0438\u043c\u0435\u044e\u0449",
+].map((item) => normalizeForSearch(item));
+
+/**
+ * Достает короткое условие из формулировок вида `без цирроза`, чтобы отличать
+ * рекомендации для исключенной подгруппы от рекомендаций для этой подгруппы.
+ */
+function excludedConditionTokens(question) {
+  const normalized = normalizeForSearch(question);
+  if (
+    containsNormalizedPhrase(normalized, "\u0431\u0435\u0437 \u043f\u0440\u043e\u0432\u0435\u0434\u0435\u043d") ||
+    containsNormalizedPhrase(normalized, "\u0431\u0435\u0437 \u043f\u0440\u0438\u043c\u0435\u043d\u0435\u043d") ||
+    containsNormalizedPhrase(normalized, "\u0431\u0435\u0437 \u043d\u0430\u0437\u043d\u0430\u0447")
+  ) {
+    return [];
+  }
+  const tokens = tokenize(question);
+  const withoutCue = normalizeForSearch("\u0431\u0435\u0437");
+  const out = [];
+  for (let index = 0; index < tokens.length - 1; index += 1) {
+    if (tokens[index] !== withoutCue) continue;
+    const next = tokens.slice(index + 1, index + 4).filter((token) => token.length >= 4 && !FOCUS_STOPWORDS.has(token));
+    if (!next.length) continue;
+    if (EXCLUDED_CONDITION_START_STOP.some((prefix) => next[0].startsWith(prefix) || prefix.startsWith(next[0]))) continue;
+    out.push(...next.slice(0, 2));
+    break;
+  }
+  return [...new Set(out)];
+}
+
+function evidenceHasExcludedConditionBeforeAnswer(answerText, evidenceText, conditionTokens) {
+  if (!conditionTokens.length || !evidenceText) return false;
+  const normalized = normalizeForSearch(evidenceText);
+  const phrases = answerSearchPhrases(answerText)
+    .map((phrase) => normalizeForSearch(phrase))
+    .filter((phrase) => phrase.length >= 3);
+  for (const phrase of phrases) {
+    const hit = normalized.indexOf(phrase);
+    if (hit < 0) continue;
+    const before = normalized.slice(Math.max(0, hit - 140), hit);
+    if (!CONDITION_POSITIVE_CUES.some((cue) => before.includes(cue))) continue;
+    if (tokenHitCount(conditionTokens, tokenizeNormalized(before)) > 0) return true;
+  }
+  return false;
+}
+
+function excludedConditionMismatchAdjustment({ mode, question, answer }, evidence) {
+  const conditionTokens = excludedConditionTokens(question);
+  if (!conditionTokens.length) return { adjustment: 0, evidence: null };
+
+  for (const item of evidence.slice(0, 5)) {
+    if ((item.score ?? 0) < 6.5) continue;
+    if (!evidenceHasExcludedConditionBeforeAnswer(answer.text, item.text, conditionTokens)) continue;
+    return {
+      adjustment: mode === "single" ? -12.4 : -4.2,
+      evidence: {
+        answerId: answer.id,
+        page: item.page,
+        text: item.text,
+        score: 8.4,
+        kind: "excluded_condition_mismatch",
+      },
+    };
+  }
+
+  return { adjustment: 0, evidence: null };
+}
+
 function scoreAnswer(context) {
   const anchor = bestAnchorSupport(context);
   const section = bestSectionSupport(context);
@@ -4910,6 +4996,9 @@ function scoreAnswer(context) {
   const contrastCue = contrastCueMismatchAdjustment(context, evidence.sort((a, b) => b.score - a.score));
   raw += contrastCue.adjustment;
   if (contrastCue.evidence) evidence.push(contrastCue.evidence);
+  const excludedCondition = excludedConditionMismatchAdjustment(context, evidence.sort((a, b) => b.score - a.score));
+  raw += excludedCondition.adjustment;
+  if (excludedCondition.evidence) evidence.push(excludedCondition.evidence);
   evidence = evidence.sort((a, b) => b.score - a.score);
   return { raw, evidence };
 }

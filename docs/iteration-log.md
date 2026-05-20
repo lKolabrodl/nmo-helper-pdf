@@ -219,3 +219,19 @@ Iteration 68 diagnostics-driven confidence:
 - `npm run eval`: pass, dev exact accuracy unchanged at `386/503 = 0.7674`, single `0.8281`, multi `0.6299`. Confidence separation improved from roughly `0.9120/0.8641` correct/incorrect to `0.7952/0.6704`.
 - `npm run eval:holdout`: pass, holdout exact accuracy unchanged at `482/580 = 0.8310`, single `0.8670`, multi `0.7222`. Confidence separation improved from `0.9242/0.8657` correct/incorrect to `0.8154/0.6919`.
 - `npm run diagnostics`: pass. Error counts are unchanged: dev `117`, holdout `98`.
+
+Iteration 69 recommendation condition and numeric OCR guards:
+
+- Added a subject guard to the frequency/duration recommendation scorer. A line that only matches `3 суток`, `7 дней`, or another duration no longer gives full recommendation evidence to an answer naming a different drug or medical agent. The guard extracts non-generic answer subject tokens and requires at least one of them in the same recommendation line.
+- Added OCR-aware numeric coverage for short split digit groups such as `9 00 мг`, treating them as `900` in addition to the raw `9` and `00`. The join is limited to short digit groups to avoid turning ordinary enumerations into arbitrary numbers.
+- Added an excluded-condition mismatch penalty for questions with clinical subgroup wording like `без X`: if a candidate is supported only in the local context `при X` / `наличие X`, that evidence is treated as a mismatch. The rule is intentionally skipped for procedural wording such as `без проведения`, `без применения`, and `без назначения`, which describes an action rather than a patient subgroup.
+- Targeted checks:
+  - `15-toxic#24`: now distinguishes `тиамин ... 900 мг ... 3 суток` from the same duration with another dose/drug in local prediction, but this did not change aggregate dev because another prior tie remains elsewhere in the split.
+  - `17-gepatit#39`: fixed by the `без цирроза` vs `при циррозе` local condition mismatch.
+  - `08-ask#18`: protected by the procedural skip for `без проведения нагрузочной пробы`.
+- `npm test`: pass.
+- `npm run typecheck`: pass.
+- `npm run eval`: pass, dev exact accuracy unchanged at `386/503 = 0.7674`, single `0.8281`, multi `0.6299`.
+- `npm run eval:holdout`: pass, holdout exact accuracy `483/580 = 0.8328`, single `0.8693`, multi `0.7222`.
+- `npm run diagnostics`: pass. Error counts are dev `117`, holdout `97`.
+- Score delta from iteration 68: dev `+0`; holdout `+1` exact (`+0.0018`), holdout single `+0.0023`, multi unchanged.

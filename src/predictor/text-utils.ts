@@ -314,13 +314,28 @@ export function evidenceSnippet(pageText, ...needles) {
 export function numberCoverage(answer, text) {
   const answerNumbers = extractNumbers(answer).flatMap(expandNumberToken);
   if (!answerNumbers.length) return 0;
-  const textNumbers = new Set(extractNumbers(text).flatMap(expandNumberToken));
+  const textNumbers = new Set(extractNumbersWithOcrJoins(text).flatMap(expandNumberToken));
   if (!textNumbers.size) return 0;
   let hit = 0;
   for (const number of answerNumbers) {
     if (textNumbers.has(number)) hit += 1;
   }
   return hit / answerNumbers.length;
+}
+
+/**
+ * Возвращает числа из текста и добавляет типичный OCR-вариант, когда одно число
+ * разорвано пробелом (`9 00 мг` вместо `900 мг`). Склейка ограничена короткими
+ * группами цифр, чтобы не превращать обычные перечисления в произвольные числа.
+ */
+function extractNumbersWithOcrJoins(text) {
+  const normalized = normalizeForSearch(text);
+  const numbers = extractNumbers(normalized);
+  const joined = normalized.match(/\b\d{1,2}\s+\d{2,3}\b/gu) ?? [];
+  for (const item of joined) {
+    numbers.push(item.replace(/\s+/gu, ""));
+  }
+  return numbers;
 }
 
 export function expandNumberToken(token) {

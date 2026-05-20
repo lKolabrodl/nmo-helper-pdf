@@ -98,8 +98,69 @@ const FREQUENCY_GENERIC_FOCUS = new Set(
   ].flatMap((item) => uniqueTokens(item)),
 );
 
+const FREQUENCY_ANSWER_GENERIC = new Set(
+  [
+    "внутривенное",
+    "внутривенно",
+    "внутримышечно",
+    "местное",
+    "перорально",
+    "введение",
+    "вводят",
+    "назначение",
+    "назначают",
+    "применение",
+    "применяют",
+    "дозе",
+    "доза",
+    "средняя",
+    "суточная",
+    "содержанием",
+    "составе",
+    "область",
+    "боли",
+    "сутки",
+    "суток",
+    "дней",
+    "дня",
+    "недель",
+    "недели",
+    "течение",
+    "каждые",
+    "каждый",
+    "курсом",
+    "раствора",
+    "раствор",
+    "таблеток",
+    "крема",
+    "геля",
+    "мг",
+    "мл",
+    "кг",
+    "раз",
+  ].flatMap((item) => uniqueTokens(item)),
+);
+
 function specificFrequencyFocusTokens(focusTokens) {
   return focusTokens.filter((token) => token.length >= 4 && !/^\d/.test(token) && !FREQUENCY_GENERIC_FOCUS.has(token));
+}
+
+/**
+ * Выделяет из числового варианта предмет назначения: препарат, действующее вещество
+ * или медицинское средство. Это защищает scorer от ложных совпадений, когда в PDF
+ * рядом найден только срок или кратность, но указан другой препарат.
+ */
+function frequencyAnswerSubjectTokens(answerText) {
+  const tokens = uniqueTokens(answerText).filter(
+    (token) => token.length >= 5 && !/^\d/u.test(token) && !/[/%]/u.test(token) && !FREQUENCY_ANSWER_GENERIC.has(token),
+  );
+  return tokens.slice(0, 5);
+}
+
+function frequencySubjectCompatible(answerText, segmentTokens) {
+  const subjectTokens = frequencyAnswerSubjectTokens(answerText);
+  if (!subjectTokens.length) return true;
+  return tokenHitCount(subjectTokens, segmentTokens) > 0;
 }
 
 export function bestFrequencyRecommendationSupport({ mode, pages, topQuestionPages, question, answer, focusTokens }) {
@@ -118,6 +179,7 @@ export function bestFrequencyRecommendationSupport({ mode, pages, topQuestionPag
       if (!containsNormalizedPhrase(segment.normalized, "рекоменд")) continue;
       const hasAnswer = phrases.some((phrase) => containsNormalizedPhrase(segment.normalized, phrase));
       if (!hasAnswer) continue;
+      if (!frequencySubjectCompatible(answer.text, segment.tokens)) continue;
       if (specificTokens.length && tokenHitCount(specificTokens, segment.tokens) < Math.min(2, specificTokens.length)) continue;
       const focusCoverage = coverage(focusTokens, segment.tokens);
       const score = 11.8 + focusCoverage * 9.0 + numberCoverage(answer.text, segment.normalized) * 1.0;

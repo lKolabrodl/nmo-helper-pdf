@@ -460,3 +460,19 @@ Outcome:
 - diagnostics error counts stayed dev `117`, holdout `98`.
 
 This does not make the predictor more accurate by itself, but it gives consumers a much better signal for when to review or route a prediction through a slower/manual process.
+
+## Iteration 69 Recommendation Condition Notes
+
+The next retained improvement addresses two recurring recommendation-family mistakes without adding facts from a specific guideline.
+
+First, duration/frequency evidence was too permissive. A source line with `3 суток` could boost several answer variants even when only one variant named the same drug or medical agent. The frequency scorer now requires a non-generic answer subject token, when present, to appear in the same recommendation line. This keeps numeric-duration evidence useful while reducing wrong ties inside dense dose families.
+
+Second, some questions define a clinical subgroup by exclusion, for example `без X`, while the PDF sentence nearby also describes a different subgroup `при X`. The new mismatch check penalizes an answer only when its local evidence occurs after a positive condition cue for the excluded subgroup. This is intentionally not applied to procedural phrases like `без проведения`, because those describe how a sign is assessed rather than which patient subgroup is being recommended.
+
+Outcome:
+
+- dev stayed `386/503 = 0.7674`;
+- holdout improved from `482/580 = 0.8310` to `483/580 = 0.8328`;
+- holdout single improved from `0.8670` to `0.8693`;
+- holdout multi stayed `0.7222`;
+- residual holdout diagnostics: `recommendation_block_parser 40`, `option_family_resolver 23`, `multi_set_selection 19`.
