@@ -164,6 +164,24 @@ import { answerQuestion } from "nmo-pdf-easy-browser";
 import { answerQuestion } from "nmo-pdf-easy-browser/browser";
 ```
 
+Браузерный entrypoint уже регистрирует bundled PDF.js внутри пакета. Поэтому в обычном
+React/Vite/Webpack/Chrome-extension коде не нужно отдельно импортировать
+`pdfjs-dist`, настраивать `GlobalWorkerOptions.workerSrc` или передавать `pdfjsLib`
+в каждый вызов. Извлечение PDF выполняется с `disableWorker: true`, чтобы пакет
+работал без отдельного worker-файла.
+
+Пример для React/Chrome extension:
+
+```ts
+import { answerQuestion } from "nmo-pdf-easy-browser/browser";
+
+const result = await answerQuestion(new Uint8Array(pdfData.slice(0)), {
+  question,
+  variants,
+  type: isSingle ? "single" : "multi",
+});
+```
+
 Пакет также публикует browser-shims, чтобы dependency graph не падал на Node built-ins:
 
 ```js
