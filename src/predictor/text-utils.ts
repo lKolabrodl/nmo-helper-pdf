@@ -1,7 +1,41 @@
 import { extractNumbers, normalizeForSearch, normalizeText, phraseTokens, stemToken, tokenize } from "../normalize.js";
 
+/**
+ * Возвращает имя ближайшей к центру локального окна группы cue.
+ *
+ * Общий хелпер: используется temporal/condition scorer'ами, чтобы выбрать,
+ * какой из взаимоисключающих наборов подсказок (например, день/ночь или
+ * статусы) ближе к фокусу.
+ */
+export function nearestCueName(local, entries) {
+  const center = Math.floor(local.length / 2);
+  let best = null;
+  for (const [name, cues] of entries) {
+    for (const cueText of cues) {
+      const cue = normalizeForSearch(cueText);
+      for (let index = local.indexOf(cue); index >= 0; index = local.indexOf(cue, index + cue.length)) {
+        const distance = Math.abs(index - center);
+        if (!best || distance < best.distance) best = { name, distance };
+      }
+    }
+  }
+  return best?.name ?? null;
+}
+
 export function rawTokens(text) {
   return normalizeText(text).match(/[a-zа-я0-9]+/giu) ?? [];
+}
+
+/**
+ * Проверяет вхождение токена с границами по пробелам/краям строки.
+ *
+ * Общий хелпер: не дает короткому токену совпасть как подстроке внутри
+ * другого слова (например, `i` внутри `ii`).
+ */
+export function tokenBoundaryIncludes(normalizedText, normalizedToken) {
+  if (!normalizedText || !normalizedToken) return false;
+  const pattern = new RegExp(`(^|\\s)${escapeRegExp(normalizedToken)}(\\s|$)`, "iu");
+  return pattern.test(normalizedText);
 }
 
 export function findPhraseOccurrences(text, phrase, { textIsNormalized = false } = {}) {

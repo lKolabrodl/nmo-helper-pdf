@@ -304,3 +304,37 @@ Iteration 74 type ordinal list binding:
 - `npm run eval`: pass, dev exact accuracy `387/503 = 0.7694`, single `0.8309`, multi `0.6299`.
 - `npm run eval:holdout`: pass, holdout exact accuracy unchanged at `484/580 = 0.8345`, single `0.8716`, multi `0.7222`.
 - Score delta from iteration 73: dev `+1` exact (`+0.0020`), dev single `+0.0028`, dev multi `+0.0000`; holdout `+0`, holdout single `+0.0000`, holdout multi `+0.0000`.
+
+Iteration 75 behavior-preserving scorer extraction (refactor only):
+
+- Goal: continue turning `predictor.ts` from a monolith into an orchestrator by moving thematic scorer clusters into `src/predictor/scorers/*`, without changing any scoring logic.
+- Extracted two scorer families:
+  - `src/predictor/scorers/direction.ts`: polarity, temporal day/night, contrast-cue mismatch, modifier-target contrast, and excluded-condition mismatch scorers.
+  - `src/predictor/scorers/numeric.ts`: cloze-gap, condition-pair, exact-numeric-option, exact-hour-alias, the condition/numeric-condition/conditioned-number web, and count-relation scorers.
+- Relocated two generic helpers to `src/predictor/text-utils.ts` so they are shared without import cycles: `nearestCueName` and `tokenBoundaryIncludes`.
+- `predictor.ts` dropped from `5400` to `3958` lines; the moved code is verbatim, only `export` was added to the scorer entry points and imports were rewired.
+- Verification used a per-case diff harness (`scripts/diff-results.mjs`), not just aggregate accuracy:
+  - `npm run typecheck`: pass.
+  - `npm test`: pass (leakage guard still covers `src/predictor/**`).
+  - `npm run eval`: dev `387/503 = 0.7694`, ZERO-DELTA vs baseline (all 503 selected sets identical).
+  - `npm run eval:holdout`: holdout `484/580 = 0.8345`, ZERO-DELTA vs baseline (all 580 selected sets identical).
+- Score delta from iteration 74: `0` on every metric, by construction.
+- Remaining in `predictor.ts`: the classification/code/row family and the list/recommendation/definition family are still inline. They are interleaved with generic retrieval helpers (`bestChunkSupport`, `bestPrefixSupport`, `visual_table_column`) and share helpers across families, so they need careful per-cluster extraction in a later pass; deferred to keep this refactor strictly behavior-preserving.
+
+Iteration 76 multi cardinality hypothesis: REJECTED by read-only diagnostic.
+
+- Hypothesis A: estimate multi-answer cardinality `k` from the shape of the sorted raw-score distribution (largest relative drop / "elbow", plus z-scored gap), instead of relying only on the existing absolute/relative/gap thresholds.
+- Method: `scripts/cardinality-diag.mjs` reuses saved eval artifacts (per-case `rawScores` + `expected`); it does not call the predictor or read answer-key/case files, so nothing leaks into runtime. No runtime code was changed for this test.
+- Results (multi cases only):
+  - dev: current `97/154 = 0.6299`; oracle-k with known count `116/154 = 0.7532`; pure elbow `77/154 = 0.5000`; best conservative dominant-elbow gate net `-1`.
+  - holdout: current `104/144 = 0.7222`; oracle-k `119/144 = 0.8264`; pure elbow `83/144 = 0.5764`; best conservative gate net `-3`.
+- Conclusion: the current threshold+guard selector is already at or above the distribution-only cardinality ceiling. Every elbow variant (pure or conservatively gated) is net-neutral-to-negative on dev and negative on holdout, so a distribution-shape cardinality estimator is rejected. This matches the iteration-50 oracle finding that cardinality alone caps multi at ~0.75 dev / ~0.83 holdout.
+- Error-structure analysis (dev multi, 57 errors): 28 distractor (a wrong option outranks a correct one), 14 under-selection, 15 over-selection. Missed-correct answers sit at raw ranks 3-7, never 1-2. So the dominant remaining lever is RANKING (lifting correct answers above distractors at the rank-3+ boundary), not cardinality. This is Hypothesis B territory; the diagnostic redirected effort there before any runtime change was made.
+
+Iteration 77 multi ranking hypothesis B (structural co-membership): one experiment NEUTRAL, reverted.
+
+- Hypothesis B: lift a correct answer above a distractor at the rank-3+ boundary by treating more explicit structures as multi co-membership evidence. First experiment: add `parenthetical_group_segment` to `SHARED_MULTI_SOURCE_KINDS` so an answer sharing the same `(A, B, C)` group as two already-selected answers gets the shared-segment lift.
+- Result: ZERO-DELTA on both dev (`387/503`) and holdout (`484/580`); per-case diff shows no case changed its selected set. The dedicated parenthetical scorer already scores those answers high enough, so the shared-segment path never produces a new lift.
+- Decision: reverted. Per the project rule that improvements must pass measurable validation, a zero-delta change is not kept as runtime surface area.
+- Why quick B wins look exhausted (data-driven, dev multi distractor cases): they split into (a) broad vocabulary-close cases whose evidence is only `bm25_question_answer`/`question_chunk_answer`/`shared_multi_segment` (no structural signal distinguishes the correct option from the distractor), and (b) neighboring flattened-list cases such as `41-destonia#34/35/36` ("К аутосомно-доминантной/рецессивной/митохондриальной форме ... относятся") and `32-gemor` form lists, where distractors are items from a sibling subtype's enumeration. (b) is exactly the flattened-list/table boundary problem the docs flag; a narrow rule risks the neighboring-list merge regressions seen in iterations 67/74, and fitting to ~3 dev cases would be overfitting.
+- Concrete next direction (not attempted here to avoid overfitting/regression): precise subtype-list boundary binding — when a question names a specific subtype/form (`<subtype> форма ... относятся`), bind answers only to that subtype's enumeration block and treat sibling-subtype list items as mismatches. This needs reliable block-boundary detection (the same prerequisite as deeper coordinate table/list reconstruction), validated with group split by PDF, holdout reporting-only.
