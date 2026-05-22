@@ -1,4 +1,4 @@
-import { normalizeForSearch } from "./normalize.js";
+import { normalizeForSearch, normalizeText } from "./normalize.js";
 
 let configuredPdfJs: any = null;
 
@@ -108,14 +108,24 @@ function groupItemsIntoLineObjects(items: any[]) {
     .filter((line) => line.text);
 }
 
+/**
+ * Убирает повторяющийся служебный текст PDF (running header/footer, ссылки),
+ * который не несет содержательной информации для скоринга.
+ *
+ * Сопоставление идет с `normalizeText` (чистая кириллица в нижнем регистре),
+ * а не с `normalizeForSearch`, потому что последняя сворачивает кириллические
+ * lookalike-символы в латиницу. Правила нарочно общие и не привязаны к
+ * конкретному документу: колонтитул "страница N из M", бегущий заголовок
+ * "клинические рекомендации - <название> - <годы>" и строки-ссылки.
+ */
 function stripLikelyBoilerplate(lines: any[]) {
   return lines.filter((line) => {
     const text = typeof line === "string" ? line : line.text;
-    const normalized = normalizeForSearch(text);
-    if (!normalized) return false;
-    if (/^СЃС‚СЂР°РЅРёС†Р°\s+\d+\s+РёР·\s+\d+/.test(normalized)) return false;
-    if (/disuria\.ru|СѓР»СѓС‡С€РµРЅРЅР°СЏ\s+РІРµСЂСЃС‚РєР°/.test(normalized)) return false;
-    if (/^РєР»РёРЅРёС‡РµСЃРєРёРµ СЂРµРєРѕРјРµРЅРґР°С†РёРё\s+[-вЂ“]/.test(normalized) && normalized.length < 140) return false;
+    if (!normalizeForSearch(text)) return false;
+    const clean = normalizeText(text);
+    if (/^страниц[аы]\s+\d+\s+из\s+\d+\b/.test(clean)) return false;
+    if (/^[-\s]*\d{1,3}[-\s]*$/.test(clean)) return false;
+    if (/(https?:\/\/|www\.|disuria\.ru)/.test(clean)) return false;
     return true;
   });
 }

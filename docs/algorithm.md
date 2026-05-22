@@ -39,7 +39,7 @@ The predictor returns machine-readable JSON:
 
 ## Runtime Pipeline
 
-1. Extract PDF text page-by-page with `pdfjs-dist`.
+1. Extract PDF text page-by-page with `pdfjs-dist`, stripping generic running boilerplate (`страница N из M` footers, standalone page-number lines, and URL/source lines) so it does not pollute chunks or numeric matching. The running guideline header is intentionally kept because it carries the disease name.
 2. Detect low-text PDFs and expose `meta.ocrNeeded`; no OCR is run.
 3. Normalize text:
    - Unicode NFKC;
