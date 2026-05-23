@@ -12,22 +12,22 @@ Decision: use the ChatGPT scorer as the production algorithm, and borrow the Cla
 
 ## Work Plan
 
-1. Create a third project: `nmo-pdf-easy-browser`.
+1. Create a browser-first package, now named `med-pdf-nmo`.
 2. Copy the best scorer and test corpus from `nmo-pdf-easy-chat-gpt`.
 3. Replace Node PDF runtime with browser-compatible input: `ArrayBuffer`, `Uint8Array`, `Blob/File`, or URL string.
 4. Expose both low-level `predict` and user-facing `answerQuestion`.
-5. Build a plain browser JS bundle at `dist/nmo-pdf-easy.browser.js` with global `NmoPdfEasy`.
+5. Build a plain browser JS bundle at `dist/med-pdf-nmo.browser.js` with global `MedPdfNmo`.
 6. Keep Node-only code limited to CLI/eval/test tooling.
 7. Verify no fixture/answer leakage and run typecheck, build, dev eval, and holdout eval.
 
 ## Testing
 
-Commands run in `nmo-pdf-easy-browser`:
+Commands run in `med-pdf-nmo`:
 
 - `npm test`: passed. Leakage guard has 3 passing tests; dataset case tests are skipped unless explicitly enabled.
 - `npm run typecheck`: passed.
-- `npm run build`: passed. Browser bundle generated: `dist/nmo-pdf-easy.browser.js`, about `312.5kb`.
-- Bundle smoke check: passed. The built JS exposes global `NmoPdfEasy` and `answerQuestion`.
+- `npm run build`: passed. Browser bundle generated: `dist/med-pdf-nmo.browser.js`.
+- Bundle smoke check: passed. The built JS exposes global `MedPdfNmo` and `answerQuestion`.
 - Browser-like VM smoke check with injected PDF.js module: passed.
 - `npm run eval`: passed with dev exact accuracy `355/473 = 0.7505`.
 - `npm run eval:holdout`: passed with holdout exact accuracy `446/550 = 0.8109`.

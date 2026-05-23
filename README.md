@@ -1,82 +1,120 @@
-# nmo-pdf-easy-browser
+# med-pdf-nmo
 
-JavaScript/Node.js пакет для выбора ответа на вопросы НМО по PDF-документу с медицинскими или клиническими рекомендациями.
+[Русская версия](./README.ru.md)
 
-Пакет принимает PDF медицинских рекомендаций, текст вопроса и варианты ответа, извлекает текст из PDF через PDF.js, ищет релевантные фрагменты документа и возвращает наиболее вероятный вариант или несколько вариантов ответа.
+`med-pdf-nmo` is a browser-first JavaScript/Node.js package that selects the most likely answer, or answer set, for NMO-style medical questions using a source PDF with clinical recommendations.
 
-Runtime-часть не использует LLM, ChatGPT, OpenAI API, Anthropic, Gemini, HuggingFace inference, transformer-модели или внешние интеллектуальные сервисы. Алгоритм работает локально на эвристиках, поиске по тексту, нормализации, скоринге и извлеченных доказательных фрагментах из PDF.
+The runtime is fully local and non-LLM. It does not use ChatGPT, OpenAI, Anthropic, Gemini, HuggingFace inference, transformer models, or any external AI service. The predictor is based on PDF text extraction, normalization, lexical search, structural heuristics, scoring, and evidence snippets from the PDF.
 
-## Что делает пакет
+## What It Does
 
-- Извлекает текст из PDF-файла через `pdfjs-dist`.
-- Принимает вопрос и варианты ответа.
-- Нормализует текст вопроса, вариантов и PDF, включая формы `ФНО-α`/`ФНО-альфа` и числовые библиографические ссылки вида `[151].`.
-- Ищет совпадения, близкие фразы, числовые значения, секции и контекстные фрагменты.
-- Считает score для каждого варианта.
-- Возвращает выбранный ответ, confidence, таблицу score и evidence из PDF.
-- Поддерживает single-answer и multi-answer вопросы.
-- Может использоваться в браузере и в Node.js.
+- Accepts a medical recommendations PDF, a question, and answer variants.
+- Extracts PDF text with `pdfjs-dist`.
+- Normalizes Russian medical text, PDF artifacts, Greek letters, numeric references, dosage forms, and common OCR quirks.
+- Scores every answer using local evidence from the PDF.
+- Supports both `single` and `multi` questions.
+- Returns selected answers, confidence, per-answer scores, raw scores, evidence snippets, and PDF metadata.
+- Works in Node.js, browser bundles, and Chrome-extension style environments.
 
-## Ориентировочные метрики
+## Current Accuracy
 
-Текущие цифры получены на локальном корпусе PDF-групп с вопросами НМО и answer key. Это не гарантия качества на любых новых документах, а практический ориентир по текущей валидации.
+These numbers come from the local keyed validation corpus. They are not a guarantee for every new PDF, but they are the current reference quality after the final test run.
 
-| Набор | Общая exact accuracy | Single-answer | Multi-answer exact set |
+| Dataset | Exact accuracy | Single-answer | Multi-answer exact set |
 | --- | ---: | ---: | ---: |
-| Dev split | `76.74%` | `83.28%` | `61.81%` |
-| Holdout split | `82.91%` | `85.78%` | `73.44%` |
-| Все answer-keyed кейсы | `73.47%` | `80.78%` | `57.11%` |
+| All keyed cases | `73.53%` (`2069/2814`) | `81.17%` (`1573/1938`) | `56.62%` (`496/876`) |
+| Holdout split | `83.79%` (`486/580`) | `87.39%` | `72.92%` |
+| Dev split | `77.14%` (`388/503`) | `83.09%` | `63.64%` |
 
-Для single-answer вопроса правильным считается только точный выбор одного варианта. Для multi-answer вопроса правильным считается только полное совпадение множества выбранных ответов, поэтому multi-метрика обычно заметно ниже.
+For `single`, only one exact selected answer is counted as correct. For `multi`, the selected set must exactly match the full expected set, so the metric is naturally stricter.
 
-## Установка по HTTPS/Git URL
+## Installation
 
-Если репозиторий опубликован на GitHub, пакет можно подключить напрямую через HTTPS.
+From npm, once published:
 
 ```bash
-npm install git+https://github.com/<user>/<repo>.git
+npm install med-pdf-nmo
 ```
 
-Или добавить ссылку в `package.json` своего проекта:
+Directly from a Git HTTPS URL:
+
+```bash
+npm install git+https://github.com/lKolabrodl/nmo-helper-pdf.git#main
+```
+
+Or in `package.json`:
 
 ```json
 {
   "dependencies": {
-    "nmo-pdf-easy-browser": "git+https://github.com/<user>/<repo>.git#main"
+    "med-pdf-nmo": "git+https://github.com/lKolabrodl/nmo-helper-pdf.git#main"
   }
 }
 ```
 
-Замените `<user>/<repo>` на реальный путь к вашему репозиторию.
+When installed from Git, npm runs `prepare`, so the package builds `dist` during installation.
 
-Можно закрепить конкретный tag, branch или commit:
+## Browser / React / Chrome Extension
 
-```json
-{
-  "dependencies": {
-    "nmo-pdf-easy-browser": "git+https://github.com/<user>/<repo>.git#v0.1.0"
-  }
-}
+Use the browser entrypoint when your app runs in a browser-like environment:
+
+```ts
+import { answerQuestion } from "med-pdf-nmo/browser";
+
+const result = await answerQuestion(new Uint8Array(pdfData.slice(0)), {
+  question,
+  variants,
+  type: isSingle ? "single" : "multi",
+});
 ```
 
-При установке из Git сработает `prepare`, поэтому пакет сам соберет `dist`.
+The browser entrypoint bundles and registers PDF.js internally. In normal React, Vite, Webpack, and Chrome-extension usage you do not need to import `pdfjs-dist`, configure `GlobalWorkerOptions.workerSrc`, or pass `pdfjsLib` into every call.
 
-## Использование в Node.js
+## Browser Script Tag
+
+For direct browser usage, load the IIFE bundle:
+
+```html
+<script src="./dist/med-pdf-nmo.browser.js"></script>
+```
+
+Then call the global object:
+
+```html
+<input id="pdf" type="file" accept="application/pdf" />
+
+<script>
+  document.querySelector("#pdf").addEventListener("change", async (event) => {
+    const file = event.target.files[0];
+
+    const result = await MedPdfNmo.answerQuestion(file, {
+      question: "Question text",
+      variants: ["Answer A", "Answer B", "Answer C"],
+      type: "single"
+    });
+
+    console.log(result.selectedIds, result.selected, result.confidence);
+  });
+</script>
+```
+
+For public GitHub repositories, CDN usage is also possible:
+
+```html
+<script src="https://cdn.jsdelivr.net/gh/lKolabrodl/nmo-helper-pdf@main/dist/med-pdf-nmo.browser.js"></script>
+```
+
+## Node.js
 
 ```js
 import fs from "node:fs/promises";
-import { answerQuestion } from "nmo-pdf-easy-browser";
+import { answerQuestion } from "med-pdf-nmo";
 
 const pdfBuffer = await fs.readFile("./doc.pdf");
 
 const result = await answerQuestion(pdfBuffer, {
-  question: "Какой препарат показан пациенту?",
-  variants: [
-    "Вариант A",
-    "Вариант B",
-    "Вариант C",
-    "Вариант D"
-  ],
+  question: "Which drug is recommended?",
+  variants: ["Answer A", "Answer B", "Answer C", "Answer D"],
   type: "single"
 });
 
@@ -86,191 +124,67 @@ console.log(result.confidence);
 console.log(result.evidence);
 ```
 
-В Node.js PDF можно передавать как `Buffer`, `Uint8Array` или `ArrayBuffer`.
-
-Строка в качестве PDF-входа трактуется как URL:
-
-```js
-const result = await answerQuestion("https://example.com/doc.pdf", {
-  question: "Текст вопроса",
-  variants: ["Ответ A", "Ответ B", "Ответ C"],
-  type: "single"
-});
-```
-
-## Использование в браузере через script
-
-Для прямого подключения в браузере используйте готовый IIFE-бандл:
-
-```html
-<script src="https://cdn.jsdelivr.net/gh/<user>/<repo>@main/dist/nmo-pdf-easy.browser.js"></script>
-```
-
-Браузерный bundle уже содержит PDF.js и минимальные browser-shims для `process`, `Buffer.from`, `fs`, `fs/promises`, `path` и `crypto`.
-
-Для локального файла можно использовать:
-
-```html
-<script src="./dist/nmo-pdf-easy.browser.js"></script>
-```
-
-Пример с `input type="file"`:
-
-```html
-<input id="pdf" type="file" accept="application/pdf" />
-
-<script>
-  document.querySelector("#pdf").addEventListener("change", async (event) => {
-    const file = event.target.files[0];
-
-    const result = await NmoPdfEasy.answerQuestion(file, {
-      question: "Текст вопроса",
-      variants: ["Ответ A", "Ответ B", "Ответ C"],
-      type: "single"
-    });
-
-    console.log(result.selectedIds);
-    console.log(result.selected);
-    console.log(result.confidence);
-  });
-</script>
-```
-
-CDN-вариант через `jsDelivr` будет работать, если репозиторий публичный и папка `dist` закоммичена.
-
-## Использование в браузере как ESM
-
-```js
-import { answerQuestion } from "./dist/nmo-pdf-easy.browser.mjs";
-
-const result = await answerQuestion(file, {
-  question: "Текст вопроса",
-  variants: ["Ответ A", "Ответ B", "Ответ C"],
-  type: "single"
-});
-```
-
-## Использование через bundler/node_modules в браузере
-
-Современные bundler-ы должны брать browser entrypoint из `exports["."].browser`:
-
-```js
-import { answerQuestion } from "nmo-pdf-easy-browser";
-```
-
-Если bundler старый или не применяет `browser`/`exports` условия, можно явно импортировать browser entrypoint:
-
-```js
-import { answerQuestion } from "nmo-pdf-easy-browser/browser";
-```
-
-Браузерный entrypoint уже регистрирует bundled PDF.js внутри пакета. Поэтому в обычном
-React/Vite/Webpack/Chrome-extension коде не нужно отдельно импортировать
-`pdfjs-dist`, настраивать `GlobalWorkerOptions.workerSrc` или передавать `pdfjsLib`
-в каждый вызов. Извлечение PDF выполняется с `disableWorker: true`, чтобы пакет
-работал без отдельного worker-файла.
-
-Пример для React/Chrome extension:
-
-```ts
-import { answerQuestion } from "nmo-pdf-easy-browser/browser";
-
-const result = await answerQuestion(new Uint8Array(pdfData.slice(0)), {
-  question,
-  variants,
-  type: isSingle ? "single" : "multi",
-});
-```
-
-Пакет также публикует browser-shims, чтобы dependency graph не падал на Node built-ins:
-
-```js
-import "nmo-pdf-easy-browser/browser-shims/globals";
-```
-
-Для ручной настройки alias-ов можно использовать такие соответствия:
-
-```js
-{
-  "node:fs": "nmo-pdf-easy-browser/browser-shims/fs",
-  "node:fs/promises": "nmo-pdf-easy-browser/browser-shims/fs-promises",
-  "node:path": "nmo-pdf-easy-browser/browser-shims/path",
-  "node:crypto": "nmo-pdf-easy-browser/browser-shims/crypto",
-  "node:process": "nmo-pdf-easy-browser/browser-shims/process",
-  "node:buffer": "nmo-pdf-easy-browser/browser-shims/buffer",
-  "fs": "nmo-pdf-easy-browser/browser-shims/fs",
-  "fs/promises": "nmo-pdf-easy-browser/browser-shims/fs-promises",
-  "path": "nmo-pdf-easy-browser/browser-shims/path",
-  "crypto": "nmo-pdf-easy-browser/browser-shims/crypto",
-  "process": "nmo-pdf-easy-browser/browser-shims/process",
-  "buffer": "nmo-pdf-easy-browser/browser-shims/buffer"
-}
-```
-
-Встроенный `globals` shim добавляет только минимальные `process.env`, `process.getBuiltinModule` и `Buffer.from`. Он не пытается сделать браузер полноценной Node.js-средой.
+In Node.js, the PDF input can be a `Buffer`, `Uint8Array`, `ArrayBuffer`, or URL string.
 
 ## API
 
 ### `answerQuestion(pdf, options)`
 
-Основной удобный API.
-
-```js
+```ts
 const result = await answerQuestion(pdf, {
-  question: "Текст вопроса",
-  variants: ["Ответ A", "Ответ B", "Ответ C"],
+  question: "Question text",
+  variants: ["Answer A", "Answer B", "Answer C"],
   type: "single"
 });
 ```
 
-`pdf` может быть:
+`pdf` can be:
 
 - `File`
 - `Blob`
 - `Buffer`
 - `ArrayBuffer`
 - `Uint8Array`
-- URL-строкой
-- объектом с методом `arrayBuffer()`
+- URL string
+- any object with `arrayBuffer()`
 
 `options`:
 
-- `question` - текст вопроса.
-- `variants` - массив вариантов ответа.
-- `answers` - альтернативное имя для `variants`.
-- `type` - `"single"` или `"multi"`.
-- `mode` - альтернативное имя для `type`.
-- `cacheKey` - ключ кеша для повторного использования извлеченного текста PDF.
-- `pdfjsLib` - явная передача PDF.js модуля.
+- `question`: question text.
+- `variants`: answer variants.
+- `answers`: alias for `variants`.
+- `type`: `"single"` or `"multi"`.
+- `mode`: alias for `type`.
+- `cacheKey`: optional PDF text cache key.
+- `pdfjsLib`: optional explicit PDF.js module override.
 
-Варианты можно передавать строками:
+Variants can be plain strings:
 
 ```js
-variants: ["Ответ A", "Ответ B", "Ответ C"]
+variants: ["Answer A", "Answer B", "Answer C"]
 ```
 
-Или объектами с собственными ID:
+Or objects with stable IDs:
 
 ```js
 variants: [
-  { id: "A", text: "Ответ A" },
-  { id: "B", text: "Ответ B" },
-  { id: "C", text: "Ответ C" }
+  { id: "A", text: "Answer A" },
+  { id: "B", text: "Answer B" },
+  { id: "C", text: "Answer C" }
 ]
 ```
 
-### Результат `answerQuestion`
+### Result Shape
 
 ```js
 {
-  selected: ["Ответ B"],
+  selected: ["Answer B"],
   selectedIds: ["B"],
   mode: "single",
   confidence: 0.73,
   scores: [
-    { id: "A", variant: "Ответ A", score: 0.12, raw: 0.41 },
-    { id: "B", variant: "Ответ B", score: 0.73, raw: 1.92 },
-    { id: "C", variant: "Ответ C", score: 0.08, raw: 0.29 }
+    { id: "A", variant: "Answer A", score: 0.12, raw: 0.41 },
+    { id: "B", variant: "Answer B", score: 0.73, raw: 1.92 }
   ],
   evidence: [],
   meta: {},
@@ -278,37 +192,33 @@ variants: [
 }
 ```
 
-Главные поля:
+Important fields:
 
-- `selected` - выбранные тексты ответов.
-- `selectedIds` - ID выбранных ответов.
-- `confidence` - относительная уверенность.
-- `scores` - score по всем вариантам.
-- `evidence` - найденные фрагменты PDF, на которые опирался алгоритм.
-- `raw` - низкоуровневый результат predictor.
+- `selected`: selected answer texts.
+- `selectedIds`: selected answer IDs.
+- `confidence`: relative confidence for the selected answer or set.
+- `scores`: calibrated and raw score per variant.
+- `evidence`: PDF snippets used by the scorer.
+- `raw`: low-level predictor output.
 
-## Multi-answer вопросы
-
-Для вопросов с несколькими правильными вариантами используйте `type: "multi"`:
+## Multi-Answer Questions
 
 ```js
 const result = await answerQuestion(pdfBuffer, {
-  question: "Какие утверждения верны?",
+  question: "Which statements are correct?",
   variants: [
-    { id: "A", text: "Утверждение A" },
-    { id: "B", text: "Утверждение B" },
-    { id: "C", text: "Утверждение C" },
-    { id: "D", text: "Утверждение D" }
+    { id: "A", text: "Statement A" },
+    { id: "B", text: "Statement B" },
+    { id: "C", text: "Statement C" },
+    { id: "D", text: "Statement D" }
   ],
   type: "multi"
 });
 ```
 
-В ответе `selectedIds` будет массив выбранных ID.
+`selectedIds` will contain all selected answer IDs.
 
-## Низкоуровневый API
-
-Пакет также экспортирует:
+## Low-Level Exports
 
 ```js
 import {
@@ -316,51 +226,51 @@ import {
   answerQuestion,
   setPdfJsLib,
   clearPredictorCache
-} from "nmo-pdf-easy-browser";
+} from "med-pdf-nmo";
 ```
 
-- `answerQuestion` - удобная обертка для обычного использования.
-- `predict` - низкоуровневый predictor API.
-- `setPdfJsLib` - настройка PDF.js, особенно полезна в браузере.
-- `clearPredictorCache` - очистка runtime-кеша predictor.
+- `answerQuestion`: convenient high-level API.
+- `predict`: low-level predictor API.
+- `setPdfJsLib`: explicit PDF.js configuration hook.
+- `clearPredictorCache`: clears the runtime predictor cache.
 
 ## CLI
 
-После установки пакет добавляет команду:
+After installation, the package provides:
 
 ```bash
-nmo-pdf-easy --help
+med-pdf-nmo --help
 ```
 
-Пример:
+Example:
 
 ```bash
-nmo-pdf-easy --pdf doc.pdf --question "Текст вопроса" --mode single --answer A="Ответ A" --answer B="Ответ B"
+med-pdf-nmo --pdf doc.pdf --question "Question text" --mode single --answer A="Answer A" --answer B="Answer B"
 ```
 
-Локально в этом репозитории можно запускать:
+Local development:
 
 ```bash
-npm run predict -- --pdf doc.pdf --question "Текст вопроса" --mode single --answer A="Ответ A" --answer B="Ответ B"
+npm run predict -- --pdf doc.pdf --question "Question text" --mode single --answer A="Answer A" --answer B="Answer B"
 ```
 
-## Сборка
+## Build
 
 ```bash
 npm install
 npm run build
 ```
 
-Сборка создает:
+Build outputs:
 
-- `dist/index.js` - основной ESM entrypoint для Node.js и bundler-ов.
-- `dist/index.d.ts` - TypeScript-типы.
-- `dist/nmo-pdf-easy.browser.js` - браузерный global-бандл `NmoPdfEasy`.
-- `dist/nmo-pdf-easy.browser.mjs` - браузерный ESM-бандл с PDF.js внутри.
-- `dist/browser-shims/*` - минимальные browser alias targets для Node built-ins.
-- `dist/cli.js` - CLI entrypoint.
+- `dist/index.js`: main ESM entrypoint.
+- `dist/index.d.ts`: TypeScript declarations.
+- `dist/med-pdf-nmo.browser.js`: browser global bundle with `MedPdfNmo`.
+- `dist/med-pdf-nmo.browser.mjs`: browser ESM bundle with PDF.js included.
+- `dist/browser-shims/*`: browser alias targets for Node built-ins.
+- `dist/cli.js`: CLI entrypoint.
 
-## Проверки разработки
+## Development Checks
 
 ```bash
 npm test
@@ -371,30 +281,18 @@ npm run eval
 npm run eval:holdout
 ```
 
-`npm run eval` и `npm run eval:holdout` нужны для проверки качества predictor. Они являются developer tooling и могут читать локальные тестовые PDF и answer key для расчета accuracy.
+`npm run eval` and `npm run eval:holdout` are development-only quality checks. They read local test PDFs and answer keys to calculate accuracy.
 
-Runtime API пакета не читает eval-файлы, split-файлы, правильные ответы или тестовые fixtures во время inference.
+The runtime package API does not read eval files, split files, answer keys, or test fixtures during inference.
 
-## Ограничения
+## Limitations
 
-- Пакет не является медицинским советником и не заменяет эксперта.
-- Качество зависит от того, насколько хорошо PDF.js извлек текст из конкретного PDF.
-- Сканированные PDF без текстового слоя могут потребовать OCR до передачи в пакет.
-- Алгоритм выбирает вероятный ответ по содержимому PDF, но не гарантирует абсолютную правильность.
-- Runtime не использует LLM и не обращается к внешним интеллектуальным сервисам.
+- This package is not medical advice and does not replace expert review.
+- Quality depends on how well PDF.js extracts text from a specific PDF.
+- Scanned PDFs without a text layer may require OCR before being passed to the package.
+- The algorithm selects likely answers from PDF evidence, but it cannot guarantee absolute correctness.
+- Runtime inference is non-LLM and does not call external intelligent services.
 
-## Короткий пример результата
+## License
 
-```js
-if (result.selectedIds.includes("B")) {
-  console.log("Алгоритм выбрал вариант B");
-}
-
-for (const item of result.scores) {
-  console.log(item.id, item.score, item.variant);
-}
-```
-
-## Лицензия
-
-MIT. Подробнее см. [LICENSE](./LICENSE).
+MIT. See [LICENSE](./LICENSE).

@@ -1,13 +1,13 @@
 {
-  "name": "nmo-pdf-easy-browser",
+  "name": "med-pdf-nmo",
   "version": "0.1.0",
   "type": "module",
-  "description": "Browser-first NMO PDF answer predictor packaged as a plain JS library.",
+  "description": "Browser-first non-LLM predictor for answering NMO medical PDF questions.",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "browser": {
-    "./dist/index.js": "./dist/nmo-pdf-easy.browser.mjs",
+    "./dist/index.js": "./dist/med-pdf-nmo.browser.mjs",
     "buffer": "./dist/browser-shims/buffer.js",
     "crypto": "./dist/browser-shims/crypto.js",
     "fs": "./dist/browser-shims/fs.js",
@@ -21,43 +21,44 @@
     "path": "./dist/browser-shims/path.js",
     "process": "./dist/browser-shims/process.js"
   },
-  "unpkg": "./dist/nmo-pdf-easy.browser.js",
-  "jsdelivr": "./dist/nmo-pdf-easy.browser.js",
+  "unpkg": "./dist/med-pdf-nmo.browser.js",
+  "jsdelivr": "./dist/med-pdf-nmo.browser.js",
   "license": "MIT",
   "files": [
     "dist",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "README.ru.md"
   ],
   "bin": {
-    "nmo-pdf-easy": "./dist/cli.js"
+    "med-pdf-nmo": "./dist/cli.js"
   },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "browser": "./dist/nmo-pdf-easy.browser.mjs",
+      "browser": "./dist/med-pdf-nmo.browser.mjs",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
     "./browser": {
       "types": "./dist/browser.d.ts",
-      "import": "./dist/nmo-pdf-easy.browser.mjs",
-      "default": "./dist/nmo-pdf-easy.browser.mjs"
+      "import": "./dist/med-pdf-nmo.browser.mjs",
+      "default": "./dist/med-pdf-nmo.browser.mjs"
     },
     "./browser-shims/*": {
       "types": "./dist/browser-shims/*.d.ts",
       "import": "./dist/browser-shims/*.js",
       "default": "./dist/browser-shims/*.js"
     },
-    "./dist/nmo-pdf-easy.browser.js": "./dist/nmo-pdf-easy.browser.js",
+    "./dist/med-pdf-nmo.browser.js": "./dist/med-pdf-nmo.browser.js",
     "./package.json": "./package.json"
   },
   "scripts": {
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
     "build": "npm run clean && npm run build:esm && npm run build:browser && npm run build:browser:esm",
     "build:esm": "tsc -p tsconfig.package.json",
-    "build:browser": "esbuild src/browser.ts --bundle --format=iife --global-name=NmoPdfEasy --outfile=dist/nmo-pdf-easy.browser.js --platform=browser --target=es2020 --legal-comments=none",
-    "build:browser:esm": "esbuild src/browser.ts --bundle --format=esm --outfile=dist/nmo-pdf-easy.browser.mjs --platform=browser --target=es2020 --legal-comments=none",
+    "build:browser": "esbuild src/browser.ts --bundle --format=iife --global-name=MedPdfNmo --outfile=dist/med-pdf-nmo.browser.js --platform=browser --target=es2020 --legal-comments=none",
+    "build:browser:esm": "esbuild src/browser.ts --bundle --format=esm --outfile=dist/med-pdf-nmo.browser.mjs --platform=browser --target=es2020 --legal-comments=none",
     "prepare": "npm run build",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
