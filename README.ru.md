@@ -39,7 +39,7 @@ npm install med-pdf-nmo
 Напрямую из Git HTTPS URL:
 
 ```bash
-npm install git+https://github.com/lKolabrodl/nmo-helper-pdf.git#main
+npm install git+https://github.com/lKolabrodl/med-pdf-nmo.git#main
 ```
 
 Или в `package.json`:
@@ -47,7 +47,7 @@ npm install git+https://github.com/lKolabrodl/nmo-helper-pdf.git#main
 ```json
 {
   "dependencies": {
-    "med-pdf-nmo": "git+https://github.com/lKolabrodl/nmo-helper-pdf.git#main"
+    "med-pdf-nmo": "git+https://github.com/lKolabrodl/med-pdf-nmo.git#main"
   }
 }
 ```
@@ -101,7 +101,7 @@ Browser entrypoint уже содержит и регистрирует PDF.js в
 Для публичного GitHub-репозитория можно использовать CDN:
 
 ```html
-<script src="https://cdn.jsdelivr.net/gh/lKolabrodl/nmo-helper-pdf@main/dist/med-pdf-nmo.browser.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/lKolabrodl/med-pdf-nmo@main/dist/med-pdf-nmo.browser.js"></script>
 ```
 
 ## Node.js

@@ -39,7 +39,7 @@ npm install med-pdf-nmo
 Directly from a Git HTTPS URL:
 
 ```bash
-npm install git+https://github.com/lKolabrodl/nmo-helper-pdf.git#main
+npm install git+https://github.com/lKolabrodl/med-pdf-nmo.git#main
 ```
 
 Or in `package.json`:
@@ -47,7 +47,7 @@ Or in `package.json`:
 ```json
 {
   "dependencies": {
-    "med-pdf-nmo": "git+https://github.com/lKolabrodl/nmo-helper-pdf.git#main"
+    "med-pdf-nmo": "git+https://github.com/lKolabrodl/med-pdf-nmo.git#main"
   }
 }
 ```
@@ -101,7 +101,7 @@ Then call the global object:
 For public GitHub repositories, CDN usage is also possible:
 
 ```html
-<script src="https://cdn.jsdelivr.net/gh/lKolabrodl/nmo-helper-pdf@main/dist/med-pdf-nmo.browser.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/lKolabrodl/med-pdf-nmo@main/dist/med-pdf-nmo.browser.js"></script>
 ```
 
 ## Node.js
