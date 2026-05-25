@@ -2313,6 +2313,55 @@ function frequencyPolarityFragments(text: string) {
   return fragments.length ? fragments : [String(text ?? "")];
 }
 
+function frequencyListItemLine(line: string) {
+  return /^\s*(?:[•*\-]|\d+[.)]|[IVX]+[.)])\s+/iu.test(String(line ?? ""));
+}
+
+function frequencyPolarityListItems(pages, pageIndex: number, lineIndex: number) {
+  const items: Array<{ text: string; page: number }> = [];
+  for (let offset = 0; offset <= 1; offset += 1) {
+    const page = pages[pageIndex + offset];
+    if (!page) continue;
+    const start = offset === 0 ? lineIndex + 1 : 0;
+    for (let index = start; index < (page.lines?.length ?? 0); index += 1) {
+      const line = page.lines[index];
+      if (!frequencyListItemLine(line)) {
+        if (items.length) return items;
+        continue;
+      }
+      items.push({ text: line, page: page.page });
+      if (items.length >= 10) return items;
+    }
+  }
+  return items;
+}
+
+function betterFrequencyListSupport(best, { pages, pageIndex, lineIndex, answer, answerPhrases, answerTokens, specificTokens, target }) {
+  const page = pages[pageIndex];
+  const heading = page.lines?.[lineIndex] ?? "";
+  const headingNorm = normalizeForSearch(heading);
+  if (frequencyPolarity(headingNorm) !== target) return best;
+  const headingTokens = tokenizeNormalized(headingNorm);
+  const headingFocusHits = tokenHitCount(specificTokens, headingTokens);
+  if (specificTokens.length >= 2 && headingFocusHits <= 0) return best;
+
+  for (const item of frequencyPolarityListItems(pages, pageIndex, lineIndex)) {
+    if (!containsPhraseOutsideParentheses(item.text, answerPhrases)) continue;
+    const itemTokens = tokenize(item.text);
+    const answerCoverage = strictSoftCoverage(answerTokens, itemTokens);
+    const score = 15.8 + answerCoverage * 4.4 + Math.min(2, headingFocusHits) * 1.2;
+    best = betterEvidence(best, {
+      answerId: answer.id,
+      page: item.page,
+      text: `${heading} ${item.text}`,
+      score,
+      kind: "frequency_polarity_list_item",
+    });
+  }
+
+  return best;
+}
+
 /**
  * Ищет evidence для вопросов вида "наиболее частый/редкий/ведущий".
  *
@@ -2327,7 +2376,8 @@ function bestFrequencyPolaritySupport({ mode, pages, topQuestionPages, question,
   const specificTokens = frequencyPolarityFocusTokens(focusTokens, answerTokens);
   let best = null;
 
-  for (const page of pages) {
+  for (let pageIndex = 0; pageIndex < pages.length; pageIndex += 1) {
+    const page = pages[pageIndex];
     if (
       topQuestionPages?.size &&
       !topQuestionPages.has(page.page) &&
@@ -2335,6 +2385,9 @@ function bestFrequencyPolaritySupport({ mode, pages, topQuestionPages, question,
       !topQuestionPages.has(page.page + 1)
     ) {
       continue;
+    }
+    for (let lineIndex = 0; lineIndex < (page.lines?.length ?? 0); lineIndex += 1) {
+      best = betterFrequencyListSupport(best, { pages, pageIndex, lineIndex, answer, answerPhrases, answerTokens, specificTokens, target });
     }
     for (const segment of cachedLineWindowSegments(page)) {
       for (const fragment of frequencyPolarityFragments(segment.text)) {
@@ -3959,6 +4012,7 @@ const CONFIDENCE_STRUCTURAL_KINDS = new Set([
   "ordinal_list_segment",
   "drug_dose_segment",
   "frequency_polarity_segment",
+  "frequency_polarity_list_item",
   "recommendation_item_segment",
   "explicit_recommendation_target_segment",
   "numeric_condition_less_than",

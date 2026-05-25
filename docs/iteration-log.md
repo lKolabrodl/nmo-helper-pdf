@@ -423,3 +423,10 @@ Iteration 86 frequency-polarity sentence binding: KEPT, holdout +1.
 - Final guard: no coverage-only support. The answer phrase must be present outside parentheses in the same fragment as the frequency cue, with optional question-focus support.
 - Result vs iteration 85: dev zero-delta `390/503 = 0.7753`; holdout `488 -> 489/580 = 0.8431`; holdout single `0.8784 -> 0.8807`; holdout multi unchanged `0.7292`.
 - Changed selected set: `11-mening#28` fixed from `[D]` to `[A]`. No dev selected sets changed.
+
+Iteration 87 frequency-polarity list-heading binding: KEPT, holdout +1.
+
+- Theory 1 continuation: the same frequency wording can be a heading for a bullet list, e.g. `Редкие формы ...:` followed by list items. The previous sentence-level scorer deliberately could not bind cross-line/cross-page list continuations.
+- Added `frequency_polarity_list_item` for single-answer questions only. It requires a heading line with the same frequency polarity as the question, optional focus-token support in the heading, and an exact answer phrase in one of the immediately following bullet/list lines. The list can continue onto the next page, but stops at the first non-list line after items begin.
+- Result vs iteration 86: dev zero-delta `390/503 = 0.7753`; holdout `489 -> 490/580 = 0.8448`; holdout single `0.8807 -> 0.8830`; holdout multi unchanged `0.7292`.
+- Changed selected set: `11-mening#54` fixed from `[B]` to `[D]`. No dev selected sets changed.

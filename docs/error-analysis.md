@@ -553,6 +553,21 @@ Current diagnostics after the retained change:
 - holdout `489/580 = 0.8431`, single `0.8807`, multi `0.7292`;
 - remaining holdout errors: recommendation block parser `35`, option-family resolver `23`, multi-set selection `19`.
 
+## Iteration 87 Error Notes
+
+The second frequency-polarity refinement handles heading-bound lists such as `Редкие формы ...:`. This is deliberately much narrower than the rejected broad list parsers:
+
+- single-answer only;
+- heading must carry the same common/rare/leading polarity as the question;
+- answer must be in an immediately following bullet/list line;
+- one-page continuation is allowed, but parsing stops as soon as the bullet list ends.
+
+Current diagnostics after the retained change:
+
+- dev `390/503 = 0.7753`, single `0.8367`, multi `0.6364`;
+- holdout `490/580 = 0.8448`, single `0.8830`, multi `0.7292`;
+- remaining holdout errors: recommendation block parser `35`, option-family resolver `23`, multi-set selection `19`.
+
 ## Iteration 73 Inline Parenthetical Group Notes
 
 The Helicobacter enzyme case was not a retrieval miss. The predictor found the exact sentence:
