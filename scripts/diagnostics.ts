@@ -2,6 +2,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { extractNumbers, normalizeForSearch, tokenize } from "../src/normalize.js";
+import { DIAGNOSTIC_BROAD_EVIDENCE_KINDS, DIAGNOSTIC_STRUCTURAL_EVIDENCE_PREFIXES } from "../src/predictor/scorer-registry.js";
 import { groupSplit, loadDataset } from "./cases.js";
 
 const DEFAULT_SPLITS = ["dev", "holdout"];
@@ -26,37 +27,6 @@ type EvalArtifact = {
 };
 
 type DatasetCase = Awaited<ReturnType<typeof loadDataset>>["cases"][number];
-
-const STRUCTURAL_EVIDENCE_PREFIXES = [
-  "coordinate_",
-  "visual_table_",
-  "row_label_",
-  "bounded_list_",
-  "ordinal_",
-  "answer_ordinal_",
-  "classification_code_",
-  "mkb_",
-  "gene_sentence_",
-  "clinical_feature_",
-  "label_definition_",
-  "term_definition_",
-  "recommendation_item_",
-  "explicit_recommendation_",
-  "drug_dose_",
-  "fibrosis_",
-  "count_relation_",
-  "cloze_",
-];
-
-const BROAD_EVIDENCE_KINDS = new Set([
-  "bm25_question_answer",
-  "question_chunk_answer",
-  "answer_chunk_question",
-  "answer_window",
-  "answer_directional_window",
-  "focused_answer_window",
-  "shared_multi_segment",
-]);
 
 function parseArgs(argv: string[]) {
   const args: Record<string, string | boolean> = {};
@@ -100,7 +70,7 @@ function topEntries(counts: Record<string, number>, limit = 12) {
 }
 
 function isStructuralEvidence(kind: string) {
-  return STRUCTURAL_EVIDENCE_PREFIXES.some((prefix) => kind.startsWith(prefix));
+  return DIAGNOSTIC_STRUCTURAL_EVIDENCE_PREFIXES.some((prefix) => kind.startsWith(prefix));
 }
 
 function normalizedIncludes(text: string, cue: string) {
@@ -177,7 +147,7 @@ function questionPatterns(question: string) {
 function evidencePatterns(error: EvalError) {
   const kinds = error.evidence.map((item) => item.kind);
   const structural = kinds.filter(isStructuralEvidence);
-  const broad = kinds.filter((kind) => BROAD_EVIDENCE_KINDS.has(kind));
+  const broad = kinds.filter((kind) => DIAGNOSTIC_BROAD_EVIDENCE_KINDS.has(kind));
   const patterns = [];
   if (structural.length) patterns.push("has_structural_evidence");
   if (broad.length && !structural.length) patterns.push("broad_evidence_only");

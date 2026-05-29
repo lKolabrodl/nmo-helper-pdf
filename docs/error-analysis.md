@@ -634,6 +634,19 @@ Current diagnostics after the retained change:
 - holdout `493/580 = 0.8500`, single `0.8899`, multi `0.7292`;
 - remaining holdout errors: recommendation block parser `35`, option-family resolver `21`, multi-set selection `19`.
 
+## Iteration 92 Error Notes
+
+The scorer registry/contracts iteration did not change predictions. It moved duplicated evidence-kind lists into `src/predictor/scorer-registry.ts`, so future diagnostics and selector changes can reason about the same scorer/evidence contract.
+
+Current diagnostics after the refactor:
+
+- dev `392/503 = 0.7793`, single `0.8424`, multi `0.6364`;
+- holdout `493/580 = 0.8500`, single `0.8899`, multi `0.7292`;
+- selected-set changes vs accepted artifacts: dev `0`, holdout `0`;
+- remaining holdout errors: recommendation block parser `35`, option-family resolver `21`, multi-set selection `19`.
+
+This keeps the next recommendation path unchanged: work should still target recommendation-block structure first, then option-family resolution, then multi set selection.
+
 ## Iteration 73 Inline Parenthetical Group Notes
 
 The Helicobacter enzyme case was not a retrieval miss. The predictor found the exact sentence:

@@ -4,43 +4,11 @@ import path from "node:path";
 import { loadDataset, groupSplit } from "./cases.js";
 import { extractNumbers, tokenize, uniqueTokens } from "../src/normalize.js";
 import { predict } from "../src/predictor.js";
-
-const STRUCTURAL_EVIDENCE_KINDS = new Set([
-  "coordinate_table_row",
-  "visual_table_column",
-  "exact_short_label_visual_row",
-  "short_label_visual_row",
-  "answer_ordinal_row",
-  "fibrosis_stage_row",
-  "gene_sentence_segment",
-  "clinical_feature_segment",
-  "mkb_class_exclusion_absent",
-  "classification_code_segment",
-  "label_number_proximity",
-  "label_definition_segment",
-  "row_label_segment",
-  "bounded_list_segment",
-  "ordinal_list_segment",
-  "drug_dose_segment",
-  "recommendation_item_segment",
-  "explicit_recommendation_target_segment",
-  "numeric_condition_less_than",
-  "numeric_condition_more_than",
-  "numeric_condition_equal",
-  "conditioned_number_segment",
-  "cloze_gap_local",
-]);
-
-const BROAD_EVIDENCE_KINDS = new Set([
-  "bm25_question_answer",
-  "question_chunk_answer",
-  "answer_chunk_question",
-  "answer_window",
-  "focused_answer_window",
-  "shared_multi_segment",
-]);
-
-const NOISY_SHARED_EVIDENCE_KINDS = new Set(["question_chunk_answer", "bm25_question_answer", "shared_multi_segment"]);
+import {
+  BROAD_EVIDENCE_KINDS,
+  FEATURE_STRUCTURAL_EVIDENCE_KINDS as STRUCTURAL_EVIDENCE_KINDS,
+  NOISY_SHARED_EVIDENCE_KINDS,
+} from "../src/predictor/scorer-registry.js";
 
 function parseArgs(argv) {
   const args = { split: "dev" };

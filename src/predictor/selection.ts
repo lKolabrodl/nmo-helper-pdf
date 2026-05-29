@@ -1,60 +1,11 @@
 import type { AnswerMode, AnswerScore } from "./types.js";
 import type { PredictorConfig } from "./config.js";
 import { normalizeForSearch, tokenize } from "../normalize.js";
-
-const STRUCTURAL_EVIDENCE_WEIGHTS = new Map(
-  Object.entries({
-    coordinate_table_row: 1.25,
-    coordinate_table_group: 1.25,
-    coordinate_table_group_inverse: 1.25,
-    coordinate_table_multicell_row: 1.25,
-    coordinate_table_membership: 1.15,
-    parenthetical_group_segment: 1.05,
-    preceding_question_label: 1.05,
-    question_continuation_list: 1.05,
-    exact_numeric_option_segment: 1.05,
-    exact_hour_alias_segment: 1.05,
-    short_medical_alias_segment: 0.9,
-    visual_table_column: 1.2,
-    exact_short_label_visual_row: 1.15,
-    short_label_visual_row: 1.05,
-    answer_ordinal_row: 1.05,
-    fibrosis_stage_row: 1.2,
-    gene_sentence_segment: 1.1,
-    clinical_feature_segment: 1.0,
-    mkb_class_exclusion_absent: 1.0,
-    classification_code_segment: 1.15,
-    label_number_proximity: 1.0,
-    label_definition_segment: 1.0,
-    definition_exact_answer_segment: 1.0,
-    definition_completion_specificity: 0.95,
-    row_label_segment: 0.95,
-    bounded_list_segment: 0.95,
-    ordinal_list_segment: 0.9,
-    drug_dose_segment: 0.9,
-    frequency_polarity_segment: 0.9,
-    frequency_polarity_list_item: 0.95,
-    clinical_course_cue_segment: 0.9,
-    recommendation_item_segment: 0.85,
-    explicit_recommendation_target_segment: 0.85,
-    numeric_condition_less_than: 0.85,
-    numeric_condition_more_than: 0.85,
-    numeric_condition_equal: 0.85,
-    conditioned_number_segment: 0.8,
-    cloze_gap_local: 0.8,
-  }),
-);
-
-const BROAD_EVIDENCE_KINDS = new Set([
-  "bm25_question_answer",
-  "question_chunk_answer",
-  "answer_chunk_question",
-  "answer_window",
-  "focused_answer_window",
-  "shared_multi_segment",
-]);
-
-const NOISY_SHARED_EVIDENCE_KINDS = new Set(["question_chunk_answer", "bm25_question_answer", "shared_multi_segment"]);
+import {
+  BROAD_EVIDENCE_KINDS,
+  NOISY_SHARED_EVIDENCE_KINDS,
+  SELECTION_STRUCTURAL_EVIDENCE_WEIGHTS as STRUCTURAL_EVIDENCE_WEIGHTS,
+} from "./scorer-registry.js";
 
 /**
  * Преобразует raw score вариантов в относительные confidence-like score.

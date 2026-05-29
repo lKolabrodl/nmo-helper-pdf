@@ -13,6 +13,10 @@ import {
 import { FOCUS_STOPWORDS, LABEL_CUES } from "./predictor/constants.js";
 import { DEFAULT_CONFIG } from "./predictor/config.js";
 import { clearPdfRuntimeCache, getPdfRuntime, normalizeAnswers } from "./predictor/runtime.js";
+import {
+  BROAD_EVIDENCE_KINDS as CONFIDENCE_BROAD_KINDS,
+  CONFIDENCE_STRUCTURAL_EVIDENCE_KINDS as CONFIDENCE_STRUCTURAL_KINDS,
+} from "./predictor/scorer-registry.js";
 import { bestDrugDoseSupport } from "./predictor/scorers/drug-dose.js";
 import { bestExactAnswerSupport } from "./predictor/scorers/exact-answer.js";
 import { bestFibrosisStageSupport } from "./predictor/scorers/fibrosis-stage.js";
@@ -4148,48 +4152,6 @@ export async function predict(input, options: any = {}) {
     },
   };
 }
-
-const CONFIDENCE_STRUCTURAL_KINDS = new Set([
-  "coordinate_table_row",
-  "coordinate_table_group",
-  "coordinate_table_group_inverse",
-  "coordinate_table_multicell_row",
-  "coordinate_table_membership",
-  "parenthetical_group_segment",
-  "preceding_question_label",
-  "question_continuation_list",
-  "exact_numeric_option_segment",
-  "exact_hour_alias_segment",
-  "visual_table_column",
-  "exact_short_label_visual_row",
-  "short_label_visual_row",
-  "answer_ordinal_row",
-  "fibrosis_stage_row",
-  "gene_sentence_segment",
-  "clinical_feature_segment",
-  "mkb_class_exclusion_absent",
-  "classification_code_segment",
-  "label_number_proximity",
-  "label_definition_segment",
-  "definition_exact_answer_segment",
-  "definition_completion_specificity",
-  "row_label_segment",
-  "bounded_list_segment",
-  "ordinal_list_segment",
-  "drug_dose_segment",
-  "frequency_polarity_segment",
-  "frequency_polarity_list_item",
-  "clinical_course_cue_segment",
-  "recommendation_item_segment",
-  "explicit_recommendation_target_segment",
-  "numeric_condition_less_than",
-  "numeric_condition_more_than",
-  "numeric_condition_equal",
-  "conditioned_number_segment",
-  "cloze_gap_local",
-]);
-
-const CONFIDENCE_BROAD_KINDS = new Set(["bm25_question_answer", "question_chunk_answer", "answer_chunk_question", "answer_window", "focused_answer_window", "shared_multi_segment"]);
 
 function confidenceEvidenceSummary(item) {
   let bestScore = 0;

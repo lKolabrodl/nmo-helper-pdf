@@ -109,6 +109,7 @@ The predictor returns machine-readable JSON:
    Definition-exact evidence handles `X это ...`, `Под X понимают ...`, and dash-definition rows. The answer phrase must be in the same definition fragment and the fragment label must match the question term, allowing a one-edit OCR typo in the label. For nested definition options, a conservative completion adjustment prefers a longer option only when it contains shorter alternatives and already has strong definition evidence.
 7. Combine evidence into raw answer scores.
 8. Apply a frozen non-LLM feature layer over the evidence kinds:
+   - evidence-kind contracts, structural/broad groups, and selection/confidence evidence lists are centralized in `src/predictor/scorer-registry.ts`;
    - small structural evidence bonuses for reliable row/table/code/list scorers;
    - pairwise single-answer contrast when the top two raw scores are near-tied and one candidate has much stronger structural support;
    - conservative multi-answer cardinality adjustments;
@@ -131,6 +132,7 @@ The predictor returns machine-readable JSON:
 - `src/predictor/config.ts`: shared predictor thresholds.
 - `src/predictor/constants.ts`: shared stopword/label constants.
 - `src/predictor/runtime.ts`: PDF extraction cache and input answer normalization.
+- `src/predictor/scorer-registry.ts`: scorer/evidence-kind registry plus shared structural, broad, noisy, confidence, diagnostics, and feature-export evidence contracts.
 - `src/predictor/text-utils.ts`: shared phrase, token, evidence, proximity, and number helpers.
 - `src/predictor/scorers/search.ts`: anchor, section, phrase, and row-label retrieval scorers.
 - `src/predictor/scorers/focused.ts`: question focus extraction plus local focused-window and line/pair evidence scorers.

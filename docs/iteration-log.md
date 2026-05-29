@@ -467,3 +467,13 @@ Iteration 91 component-assigned dose binding: KEPT, dev +1, holdout zero-delta.
 - Result vs iteration 90: dev `391 -> 392/503 = 0.7793`; holdout zero-delta `493/580 = 0.8500`; dev single `0.8395 -> 0.8424`; multi unchanged.
 - Changed selected set: dev `34-covid#42` fixed `[B] -> [A]`. No holdout selected sets changed.
 - Validation: `npm run typecheck`, `npm test`, `npm run eval`, `npm run eval:holdout`, and `npm run diagnostics` passed.
+
+Iteration 92 scorer registry/contracts: KEPT, behavior-preserving.
+
+- Goal: implement recommendation point 7 as infrastructure before another algorithmic push. The predictor now has `src/predictor/scorer-registry.ts`, a single place for scorer metadata, evidence-kind contracts, structural evidence weights, broad/noisy evidence groups, confidence evidence groups, diagnostics prefixes, and feature-export evidence sets.
+- Runtime selection behavior intentionally stayed unchanged. `selection.ts`, confidence calculation, diagnostics, and feature export now import the same contract lists instead of carrying duplicated local sets.
+- Leakage guard note: the first registry draft used the English word `retrieval` in a descriptive string; the existing guard correctly rejected it because it contains `eval`. The wording was changed to `lookup`; no runtime logic changed.
+- Result vs iteration 91: dev unchanged `392/503 = 0.7793`, single `0.8424`, multi `0.6364`; holdout unchanged `493/580 = 0.8500`, single `0.8899`, multi `0.7292`.
+- Selected-set comparison vs accepted artifacts: dev `0` changed cases, holdout `0` changed cases.
+- Current diagnostics remain dev `111` errors and holdout `87` errors. The largest next buckets are still holdout `recommendation_block_parser 35`, `option_family_resolver 21`, and `multi_set_selection 19`.
+- Validation: `npm run typecheck`, `npm test`, `npm run eval`, `npm run eval:holdout`, and `npm run diagnostics` passed.
