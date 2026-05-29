@@ -647,6 +647,19 @@ Current diagnostics after the refactor:
 
 This keeps the next recommendation path unchanged: work should still target recommendation-block structure first, then option-family resolution, then multi set selection.
 
+## Iteration 93 Error Notes
+
+The retained recommendation-block item scorer reduced dev multi errors without changing holdout accuracy. The useful shape is narrow: multi-answer recommendation questions where one recommendation item contains the question context and the answer options. The rejected single-answer version showed why this cannot become a general recommendation scorer: neighboring recommendation items often share the same patient/context wording and only differ in the final target/condition.
+
+Current diagnostics after the retained change:
+
+- dev `395/503 = 0.7853`, single `0.8424`, multi `0.6558`;
+- holdout `493/580 = 0.8500`, single `0.8899`, multi `0.7292`;
+- dev errors `108`, holdout errors `87`;
+- remaining holdout errors: recommendation block parser `35`, option-family resolver `21`, multi-set selection `19`.
+
+Next recommendation-block work should target either single-answer condition binding inside a recommendation item, or multi item boundary/contrast cleanup. Broad single recommendation boosts are now known to be unsafe.
+
 ## Iteration 73 Inline Parenthetical Group Notes
 
 The Helicobacter enzyme case was not a retrieval miss. The predictor found the exact sentence:

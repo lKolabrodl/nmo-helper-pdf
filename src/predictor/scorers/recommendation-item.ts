@@ -1,6 +1,6 @@
 import { extractNumbers, normalizeForSearch, normalizeText, uniqueTokens } from "../../normalize.js";
 import { FOCUS_STOPWORDS } from "../constants.js";
-import { answerSearchPhrases, betterEvidence, containsNormalizedPhrase, numberCoverage, strictSoftCoverage, tokenizeNormalized } from "../text-utils.js";
+import { answerSearchPhrases, betterEvidence, containsNormalizedPhrase, numberCoverage, strictSoftCoverage, tokenizeNormalized, tokenHitCount } from "../text-utils.js";
 
 const RECOMMENDATION_QUESTION_GENERIC = new Set(
   [
@@ -475,6 +475,69 @@ export function bestRecommendationItemSupport({ pages, question, answer, answerT
       text: segment.text,
       score,
       kind: "recommendation_item_segment",
+    });
+  }
+
+  return best;
+}
+
+function broadRecommendationQuestion(question) {
+  const normalized = normalizeForSearch(question);
+  return (
+    containsNormalizedPhrase(normalized, "\u0440\u0435\u043a\u043e\u043c\u0435\u043d\u0434") ||
+    containsNormalizedPhrase(normalized, "\u043d\u0430\u0437\u043d\u0430\u0447") ||
+    containsNormalizedPhrase(normalized, "\u043f\u0440\u043e\u0432\u043e\u0434") ||
+    containsNormalizedPhrase(normalized, "\u043b\u0435\u0447\u0435\u043d") ||
+    containsNormalizedPhrase(normalized, "\u0442\u0435\u0440\u0430\u043f") ||
+    containsNormalizedPhrase(normalized, "\u043f\u0440\u043e\u0444\u0438\u043b\u0430\u043a\u0442")
+  );
+}
+
+function recommendationCueSegment(segmentNorm) {
+  return (
+    containsNormalizedPhrase(segmentNorm, "\u0440\u0435\u043a\u043e\u043c\u0435\u043d\u0434") ||
+    containsNormalizedPhrase(segmentNorm, "\u043d\u0430\u0437\u043d\u0430\u0447") ||
+    containsNormalizedPhrase(segmentNorm, "\u043f\u0440\u043e\u0432\u043e\u0434") ||
+    containsNormalizedPhrase(segmentNorm, "\u043f\u0440\u0438\u043c\u0435\u043d")
+  );
+}
+
+/**
+ * Ищет вариант внутри одного рекомендательного пункта, не склеивая соседние рекомендации.
+ * Срабатывает только при высокой доле вопросных токенов в том же пункте, где найден вариант.
+ */
+export function bestRecommendationBlockSupport({ mode, pages, topQuestionPages, question, answer, answerTokens }) {
+  if (mode !== "multi") return null;
+  if (!broadRecommendationQuestion(question)) return null;
+  const questionNorm = normalizeForSearch(question);
+  if (containsNormalizedPhrase(questionNorm, "\u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u0435")) return null;
+  const qTokens = recommendationQuestionTokens(question);
+  if (qTokens.length < 3) return null;
+  let best = null;
+
+  for (const segment of recommendationSegments(pages)) {
+    if (topQuestionPages?.size && !topQuestionPages.has(segment.page)) continue;
+    if (!recommendationCueSegment(segment.normalized)) continue;
+    if (recommendationPresenceMismatch(answer.text, segment.normalized)) continue;
+    const segmentTokens = tokenizeNormalized(segment.normalized);
+    const qCoverage = recommendationQuestionCoverage(questionNorm, qTokens, segment.normalized);
+    const qHits = tokenHitCount(qTokens, segmentTokens);
+    if (qCoverage < 0.54 || qHits < Math.min(4, qTokens.length)) continue;
+    const answerHit = recommendationSegmentAnswerHit(answer, answerTokens, segment.normalized, segmentTokens);
+    if (!answerHit.supportHit) continue;
+    const score =
+      12.4 +
+      Math.min(1, qCoverage) * 4.6 +
+      Math.min(5, qHits) * 0.7 +
+      answerHit.answerCoverage * 4.8 +
+      answerHit.numericCoverage * 1.8 +
+      (answerHit.strongPhraseHit ? 2.4 : answerHit.phraseHit ? 1.2 : 0);
+    best = betterEvidence(best, {
+      answerId: answer.id,
+      page: segment.page,
+      text: segment.text,
+      score,
+      kind: "recommendation_block_segment",
     });
   }
 

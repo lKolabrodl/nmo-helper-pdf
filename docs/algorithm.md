@@ -87,6 +87,7 @@ The predictor returns machine-readable JSON:
    - `recommendation_polarity_match` for narrow negative-recommendation questions;
    - `exact_numeric_option_segment` for single-answer recommendation/dose/frequency prompts where a full numeric option phrase appears in a relevant local line;
    - `explicit_recommendation_target_segment` / `explicit_recommendation_target_mismatch` for multi questions about `назначение`, `проведение`, `проводить`, or `выполнение` a specific target; the answer must be supported by the recommendation block for that target, and confident hits in neighboring recommendation blocks get a mild penalty;
+   - `recommendation_block_segment` for multi-answer recommendation questions where one recommendation item itself contains both enough question context and an answer option; this is disabled for multi `назначение X` prompts, because those often need a target line plus dose/course comments rather than one-line item matching;
    - `frequency_recommendation_line` with stricter unit matching for `дни` vs `сутки`;
    - `conditioned_number_segment` and `numeric_condition_*` for tightly scoped condition/value rows such as `2-я неделя -> 0,05`, `20-30 кг -> 60 мг`, and phase abbreviations like `ХФ/ФА/БК -> 400/600 мг`;
    - `count_relation_segment` for single-answer count questions whose variants are short numeric answers, binding the number to local count/relation cues and question focus while ignoring long biomedical answers that only contain incidental numeric tokens;
@@ -143,7 +144,7 @@ The predictor returns machine-readable JSON:
 - `src/predictor/scorers/frequency.ts`: frequency/duration recommendation scorer.
 - `frequency_polarity_segment` / `frequency_polarity_list_item` in `src/predictor.ts`: narrow sentence/list-heading scorers for common/rare/leading frequency wording.
 - `definition_exact_answer_segment` in `src/predictor.ts`: narrow exact-answer scorer for definition fragments with term-label binding and one-edit OCR tolerance.
-- `src/predictor/scorers/recommendation-item.ts`: narrow recommendation item scorer.
+- `src/predictor/scorers/recommendation-item.ts`: narrow recommendation item, explicit target, and multi recommendation-block item scorers.
 - `src/predictor/scorers/fibrosis-stage.ts`: fibrosis/METAVIR stage row scorer.
 - `src/predictor/scorers/direction.ts`: polarity, temporal day/night, clinical course manifestation, contrast-cue, modifier-target, and excluded-condition mismatch scorers.
 - `src/predictor/scorers/numeric.ts`: cloze-gap, condition-pair, exact-numeric/hour option, condition/numeric-condition, and count-relation scorers.

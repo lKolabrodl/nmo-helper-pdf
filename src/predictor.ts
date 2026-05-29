@@ -35,7 +35,11 @@ import {
   hasCoordinateTableGroupCue,
 } from "./predictor/scorers/coordinate-table.js";
 import { bestFocusedSupport, bestLineTokenSupport, cachedLineTokenSegments, questionFocusTokens } from "./predictor/scorers/focused.js";
-import { bestRecommendationItemSupport, explicitRecommendationTargetAdjustment } from "./predictor/scorers/recommendation-item.js";
+import {
+  bestRecommendationBlockSupport,
+  bestRecommendationItemSupport,
+  explicitRecommendationTargetAdjustment,
+} from "./predictor/scorers/recommendation-item.js";
 import { optionFamilyCompactComboAdjustment, optionFamilyComparatorAdjustment } from "./predictor/scorers/option-family.js";
 import {
   clinicalCourseCueAdjustment,
@@ -3811,6 +3815,7 @@ function scoreAnswer(context) {
   const impossibilityOnly = impossibilityOnlyAdjustment(context);
   const activeTherapyIndication = activeTherapyIndicationAdjustment(context);
   const recommendationItem = bestRecommendationItemSupport(context);
+  const recommendationBlock = bestRecommendationBlockSupport(context);
   const explicitRecommendationTarget = explicitRecommendationTargetAdjustment(context);
   const conditionedNumber = bestConditionedNumberSupport(context);
   const numericCondition = bestNumericConditionSupport(context);
@@ -3886,6 +3891,7 @@ function scoreAnswer(context) {
     impossibilityOnly.adjustment +
     activeTherapyIndication.adjustment +
     (recommendationItem?.score ?? 0) * 1.1 +
+    (recommendationBlock?.score ?? 0) * 0.92 +
     (explicitRecommendationTarget.support?.score ?? 0) * 1.05 +
     explicitRecommendationTarget.adjustment +
     (conditionedNumber?.score ?? 0) * 1.1 +
@@ -3966,6 +3972,7 @@ function scoreAnswer(context) {
     impossibilityOnly.evidence,
     activeTherapyIndication.evidence,
     recommendationItem,
+    recommendationBlock,
     explicitRecommendationTarget.support,
     explicitRecommendationTarget.evidence,
     conditionedNumber,

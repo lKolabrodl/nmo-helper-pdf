@@ -477,3 +477,14 @@ Iteration 92 scorer registry/contracts: KEPT, behavior-preserving.
 - Selected-set comparison vs accepted artifacts: dev `0` changed cases, holdout `0` changed cases.
 - Current diagnostics remain dev `111` errors and holdout `87` errors. The largest next buckets are still holdout `recommendation_block_parser 35`, `option_family_resolver 21`, and `multi_set_selection 19`.
 - Validation: `npm run typecheck`, `npm test`, `npm run eval`, `npm run eval:holdout`, and `npm run diagnostics` passed.
+
+Iteration 93 multi recommendation-block item binding: KEPT, dev +3, holdout zero-delta.
+
+- Theory: some multi recommendation questions are answered by one explicit recommendation item that contains both the question context and several answer options. Existing broad/shared evidence retrieved the right item but sometimes kept an unrelated neighbor or missed a same-item answer.
+- Attempt 1, frequency/recommendation cue expansion for `назначается` and first-vs-recurring schedules: typecheck/test passed, but dev and holdout selected sets stayed unchanged. Rejected as zero-gain dead code.
+- Attempt 2, broad recommendation item scorer for single+multi: dev was net zero and holdout regressed `493 -> 490`, because single-answer questions often have several neighboring recommendation items with overlapping context. Rejected.
+- Attempt 3, multi-only item scorer: retained. It requires a recommendation-like segment, high question-token coverage in the same segment, and answer support inside that exact segment. It is disabled for multi `назначение X` prompts because those often need the target recommendation line plus dose/course comments.
+- Result vs iteration 92: dev `392 -> 395/503 = 0.7853`; dev multi `0.6364 -> 0.6558`; dev single unchanged `0.8424`. Holdout unchanged `493/580 = 0.8500`; holdout single `0.8899`, multi `0.7292`.
+- Selected-set comparison vs accepted artifacts: dev changed `4` cases (`3` fixed, `1` still wrong), holdout changed `1` case (still wrong).
+- Current diagnostics: dev errors `111 -> 108`, dev recommendation bucket `25 -> 22`; holdout errors unchanged `87`.
+- Validation: `npm run typecheck`, `npm test`, `npm run eval`, `npm run eval:holdout`, and `npm run diagnostics` passed.
